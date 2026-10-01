@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
+/* ─── Design tokens ────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --sage:        #2D6A4F;
+  --sage-mid:    #40916C;
+  --sage-light:  #D8F3DC;
+  --mint:        #B7E4C7;
+  --charcoal:    #1A2E22;
+  --off-white:   #FBFBFA;
+  --warm-white:  #F4F7F4;
+  --background:  #FBFBFA;
+  --foreground:  #1A2E22;
+  --font-sans:   var(--font-geist-sans);
+  --font-mono:   var(--font-geist-mono);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Base reset ────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Custom scrollbar ──────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f1;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--mint);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sage-mid);
+}
+
+/* ─── Selection ─────────────────────────────────────── */
+::selection {
+  background-color: var(--sage-light);
+  color: var(--charcoal);
+}
+
+/* ─── Antd overrides ────────────────────────────────── */
+.ant-badge-count {
+  font-family: var(--font-geist-sans), sans-serif !important;
+}
+
+/* ─── Smooth card hover transitions ─────────────────── */
+.transition-400 {
+  transition-duration: 400ms;
 }

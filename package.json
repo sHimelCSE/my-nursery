@@ -9,9 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "antd": "^6.6.5",
+    "bangladesh-geojson": "github:ifahimreza/bangladesh-geojson",
+    "bcryptjs": "^3.0.3",
+    "framer-motion": "^13.4.6",
+    "html2canvas-pro": "^2.5.0",
+    "html2pdf.js": "^0.14.0",
+    "jspdf": "^4.2.1",
+    "mongoose": "^9.10.3",
     "next": "16.3.8",
+    "next-auth": "^4.24.15",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
