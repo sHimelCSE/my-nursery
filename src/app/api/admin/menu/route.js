@@ -5,10 +5,10 @@ import NavigationMenu from "@/models/NavigationMenu";
 
 const DEFAULT_MENUS = [
   // Navbar Links
-  { label: "All Products", url: "/products", location: "navbar", order: 0, isActive: true },
-  { label: "Plants", url: "/products?category=plant", location: "navbar", order: 1, isActive: true },
-  { label: "Fertilizers", url: "/products?category=fertilizer", location: "navbar", order: 2, isActive: true },
-  { label: "Tools & Pots", url: "/products?category=tool", location: "navbar", order: 3, isActive: true },
+  { label: "All Products", url: "/#products", location: "navbar", order: 0, isActive: true },
+  { label: "Plants", url: "/?category=plant", location: "navbar", order: 1, isActive: true },
+  { label: "Fertilizers", url: "/?category=fertilizer", location: "navbar", order: 2, isActive: true },
+  { label: "Tools & Pots", url: "/?category=tool", location: "navbar", order: 3, isActive: true },
   { label: "About Us", url: "/about", location: "navbar", order: 4, isActive: true },
   { label: "Contact Us", url: "/contact", location: "navbar", order: 5, isActive: true },
 
@@ -24,19 +24,24 @@ export async function GET(request) {
   try {
     await dbConnect();
     const admin = await getAuthenticatedAdmin(request);
+    const { searchParams } = new URL(request.url);
+    const location = searchParams.get("location");
 
-    let menus = await NavigationMenu.find().sort({ order: 1 });
-
-    if (!menus || menus.length === 0) {
+    const count = await NavigationMenu.countDocuments();
+    if (count === 0) {
       await NavigationMenu.insertMany(DEFAULT_MENUS);
-      menus = await NavigationMenu.find().sort({ order: 1 });
+    }
+
+    const query = {};
+    if (location && ["navbar", "footer"].includes(location)) {
+      query.location = location;
     }
 
     if (!admin) {
-      const activeMenus = menus.filter((m) => m.isActive);
-      return NextResponse.json({ success: true, menus: activeMenus });
+      query.isActive = true;
     }
 
+    const menus = await NavigationMenu.find(query).sort({ order: 1 });
     return NextResponse.json({ success: true, menus });
   } catch (error) {
     console.error("GET /api/admin/menu error:", error);

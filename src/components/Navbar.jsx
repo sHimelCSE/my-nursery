@@ -18,13 +18,41 @@ import { useSession, signOut } from "next-auth/react";
 import useCartStore from "@/lib/cartStore";
 
 const NAV_LINKS = [
-  { label: "All Products", href: "/products" },
-  { label: "Plants",       href: "/products?category=plant" },
-  { label: "Fertilizers",  href: "/products?category=fertilizer" },
-  { label: "Tools & Pots", href: "/products?category=tool" },
+  { label: "All Products", href: "/#products" },
+  { label: "Plants",       href: "/?category=plant" },
+  { label: "Fertilizers",  href: "/?category=fertilizer" },
+  { label: "Tools & Pots", href: "/?category=tool" },
   { label: "About Us",     href: "/about" },
   { label: "Contact Us",   href: "/contact" },
 ];
+
+const LEGAL_URL_REGEX = /\/(privacy|terms|refund)/i;
+const LEGAL_LABEL_REGEX = /(privacy|terms|refund|policy|শর্ত|নীতি)/i;
+
+function cleanNavbarItems(rawItems) {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) return NAV_LINKS;
+
+  const seenLabels = new Set();
+  const cleaned = [];
+
+  for (const m of rawItems) {
+    const label = (m.label || "").trim();
+    let url = (m.url || m.href || "").trim();
+    if (!label || !url) continue;
+
+    // Discard any legal policies from navbar
+    if (LEGAL_URL_REGEX.test(url) || LEGAL_LABEL_REGEX.test(label)) continue;
+
+    // Deduplicate by normalized label (e.g. only 1 About Us, 1 Contact Us)
+    const normKey = label.toLowerCase();
+    if (seenLabels.has(normKey)) continue;
+    seenLabels.add(normKey);
+
+    cleaned.push({ label, href: url });
+  }
+
+  return cleaned.length > 0 ? cleaned : NAV_LINKS;
+}
 
 export default function Navbar() {
   const pathname  = usePathname();
@@ -40,13 +68,8 @@ export default function Navbar() {
       .then((res) => res.json())
       .then((data) => {
         const items = data.menus || data.data;
-        if (data.success && Array.isArray(items) && items.length > 0) {
-          setNavLinks(
-            items.map((m) => ({
-              label: m.label,
-              href: m.url,
-            }))
-          );
+        if (data.success && Array.isArray(items)) {
+          setNavLinks(cleanNavbarItems(items));
         }
       })
       .catch(() => {});
@@ -138,16 +161,18 @@ export default function Navbar() {
           {/* ── Desktop Nav ─────────────────────────── */}
           <nav className="hidden md:flex items-center gap-0.5">
             {navLinks.map(({ label, href }) => {
-              const isActive = href.includes("?")
-                ? pathname === "/products"
-                : pathname === href;
+              const isAboutOrContact = href === "/about" || href === "/contact";
+              const isActive = isAboutOrContact
+                ? pathname === href
+                : pathname === "/" && href.includes("#products");
+
               return (
                 <Link
-                  key={href}
+                  key={`${href}-${label}`}
                   href={href}
                   className={`relative px-3.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                     isActive
-                      ? "text-[#2D6A4F] bg-[#D8F3DC]/70"
+                      ? "text-[#2D6A4F] bg-[#D8F3DC]/70 font-semibold"
                       : "text-[#4A5568] hover:text-[#2D6A4F] hover:bg-[#D8F3DC]/40"
                   }`}
                 >
@@ -272,14 +297,15 @@ export default function Navbar() {
             <nav className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
               {navLinks.map(({ label, href }, i) => (
                 <motion.div
-                  key={href}
+                  key={`${href}-${label}-${i}`}
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.06, duration: 0.2 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
                 >
                   <Link
                     href={href}
-                    className="flex items-center px-4 py-3 rounded-xl text-[14px] font-medium text-[#374151] hover:text-[#2D6A4F] hover:bg-[#D8F3DC]/50 transition-all duration-200"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center px-4 py-2.5 rounded-xl text-[14px] font-medium text-[#374151] hover:text-[#2D6A4F] hover:bg-[#D8F3DC]/50 transition-all duration-200"
                   >
                     {label}
                   </Link>
