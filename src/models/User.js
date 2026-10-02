@@ -20,6 +20,16 @@ const UserSchema = new Schema(
       trim: true,
       default: "",
     },
+    address: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    postalCode: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     password: {
       type: String,
       required: false, // Optional for Google OAuth users

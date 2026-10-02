@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import CartDrawer from "@/components/CartDrawer";
+import Footer from "@/components/Footer";
 import AntdProvider from "@/components/AntdProvider";
 
 const geistSans = Geist({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* CartDrawer: fixed slide-over panel, reads isCartOpen from Zustand */}
           <CartDrawer />
           <main className="flex-1">{children}</main>
+          <Footer />
         </AntdProvider>
       </body>
     </html>

@@ -174,17 +174,9 @@ function LoginForm() {
 
             {/* Password */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[13px] font-bold text-[#374151]">
-                  Password
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-[12px] font-semibold text-[#2D6A4F] hover:text-[#40916C] hover:underline"
-                >
-                  Forgot password? (পাসওয়ার্ড ভুলে গেছেন?)
-                </Link>
-              </div>
+              <label className="block text-[13px] font-bold text-[#374151] mb-1.5">
+                Password
+              </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">
                   <LockOutlined />

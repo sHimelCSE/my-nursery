@@ -16,11 +16,13 @@ const useCartStore = create(
       // ── Cart item actions ──────────────────────────
       addItem: (product) => {
         const { items } = get();
-        const existing = items.find((i) => i._id === product._id);
+        const id = product._id || product.id;
+        const img = product.images?.[0] || product.image || "";
+        const existing = items.find((i) => i._id === id);
         if (existing) {
           set({
             items: items.map((i) =>
-              i._id === product._id ? { ...i, quantity: i.quantity + 1 } : i
+              i._id === id ? { ...i, quantity: i.quantity + (product.quantity || 1) } : i
             ),
           });
         } else {
@@ -28,11 +30,11 @@ const useCartStore = create(
             items: [
               ...items,
               {
-                _id:      product._id,
+                _id:      id,
                 title:    product.title,
                 price:    product.price,
-                image:    product.images?.[0] || "",
-                quantity: 1,
+                image:    img,
+                quantity: product.quantity || 1,
               },
             ],
           });

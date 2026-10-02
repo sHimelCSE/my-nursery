@@ -16,6 +16,11 @@ const ProductSchema = new Schema(
       required: [true, "Price is required"],
       min: [0, "Price cannot be negative"],
     },
+    costPrice: {
+      type: Number,
+      default: 0,
+      min: [0, "Cost price cannot be negative"],
+    },
     category: {
       type: String,
       required: [true, "Category is required"],
@@ -45,6 +50,9 @@ const ProductSchema = new Schema(
 );
 
 // Prevent Next.js hot-reload from recompiling the model
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Product;
+}
 const Product =
   mongoose.models.Product || mongoose.model("Product", ProductSchema);
 

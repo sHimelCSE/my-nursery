@@ -22,6 +22,8 @@ const NAV_LINKS = [
   { label: "Plants",       href: "/products?category=plant" },
   { label: "Fertilizers",  href: "/products?category=fertilizer" },
   { label: "Tools & Pots", href: "/products?category=tool" },
+  { label: "About Us",     href: "/about" },
+  { label: "Contact Us",   href: "/contact" },
 ];
 
 export default function Navbar() {
@@ -30,8 +32,25 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted,  setMounted]  = useState(false);
+  const [navLinks, setNavLinks] = useState(NAV_LINKS);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    fetch("/api/admin/menu?location=navbar")
+      .then((res) => res.json())
+      .then((data) => {
+        const items = data.menus || data.data;
+        if (data.success && Array.isArray(items) && items.length > 0) {
+          setNavLinks(
+            items.map((m) => ({
+              label: m.label,
+              href: m.url,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -41,8 +60,16 @@ export default function Navbar() {
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
-  const getTotalItems = useCartStore((s) => s.getTotalItems);
-  const totalItems    = mounted ? getTotalItems() : 0;
+  const totalCount = useCartStore((state) =>
+    (state.items || []).reduce((sum, item) => sum + item.quantity, 0)
+  );
+  const openCart   = useCartStore((state) => state.openCart);
+  const totalItems = mounted ? totalCount : 0;
+
+  // Isolate Admin Portal: Do not render customer store Navbar on /Manage_Admin routes
+  if (pathname && pathname.startsWith("/Manage_Admin")) {
+    return null;
+  }
 
   const userMenuItems = [
     {
@@ -110,7 +137,7 @@ export default function Navbar() {
 
           {/* ── Desktop Nav ─────────────────────────── */}
           <nav className="hidden md:flex items-center gap-0.5">
-            {NAV_LINKS.map(({ label, href }) => {
+            {navLinks.map(({ label, href }) => {
               const isActive = href.includes("?")
                 ? pathname === "/products"
                 : pathname === href;
@@ -142,7 +169,7 @@ export default function Navbar() {
             <motion.button
               id="navbar-cart-btn"
               aria-label={`Open cart – ${totalItems} items`}
-              onClick={() => useCartStore.getState().toggleCart()}
+              onClick={openCart}
               whileTap={{ scale: 0.92 }}
               className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4A5568] hover:text-[#2D6A4F] hover:bg-[#D8F3DC]/50 transition-all duration-200"
             >
@@ -243,7 +270,7 @@ export default function Navbar() {
             className="md:hidden bg-white border-t border-gray-100 shadow-lg shadow-black/[0.04]"
           >
             <nav className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
-              {NAV_LINKS.map(({ label, href }, i) => (
+              {navLinks.map(({ label, href }, i) => (
                 <motion.div
                   key={href}
                   initial={{ opacity: 0, x: -12 }}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   DeleteOutlined, MinusOutlined, PlusOutlined,
   ShoppingOutlined, CloseOutlined,
@@ -18,9 +18,15 @@ function calcDelivery(subtotal, city = "") {
 
 export default function CartDrawer() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const isCartOpen    = useCartStore((s) => s.isCartOpen);
   const closeCart     = useCartStore((s) => s.closeCart);
+
+  // Isolate Admin Portal: Do not render cart drawer on /Manage_Admin routes
+  if (pathname && pathname.startsWith("/Manage_Admin")) {
+    return null;
+  }
   const items         = useCartStore((s) => s.items);
   const removeItem    = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);

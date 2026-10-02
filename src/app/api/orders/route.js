@@ -5,6 +5,7 @@ import crypto from "crypto";
 import dbConnect from "@/lib/dbConnect";
 import Order from "@/models/Order";
 import User from "@/models/User";
+import Notification from "@/models/Notification";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/orders
@@ -138,6 +139,20 @@ export async function POST(request) {
       notes:          notes || "",
       status:         "Pending",
     });
+
+    // ── Create Admin Notification ───────────────────────
+    try {
+      await Notification.create({
+        title: "New Order Placed",
+        message: `Customer ${fullName.trim()} placed order #${order._id.toString().slice(-6).toUpperCase()} for ৳${calculatedTotal}`,
+        type: "order",
+        link: "/Manage_Admin?tab=orders",
+        isRead: false,
+        createdAt: new Date(),
+      });
+    } catch (notifErr) {
+      console.error("Failed to create order notification:", notifErr);
+    }
 
     // ── Generate NextAuth JWT Session Cookie if New User ─
     let sessionToken = null;
