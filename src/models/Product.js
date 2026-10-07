@@ -24,10 +24,8 @@ const ProductSchema = new Schema(
     category: {
       type: String,
       required: [true, "Category is required"],
-      enum: {
-        values: ["plant", "tool", "fertilizer"],
-        message: "Category must be one of: plant, tool, fertilizer",
-      },
+      trim: true,
+      lowercase: true,
     },
     images: {
       type: [String], // Array of image URLs
@@ -42,6 +40,17 @@ const ProductSchema = new Schema(
     care_instructions: {
       type: String,
       default: "",
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   {

@@ -17,15 +17,20 @@ export async function PUT(request, { params }) {
     await dbConnect();
     const body = await request.json();
 
+    const updateData = {};
+    if (body.label !== undefined) updateData.label = body.label.trim();
+    if (body.url !== undefined) updateData.url = (body.url || "#").trim();
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.menuType !== undefined) updateData.menuType = body.menuType;
+    if (body.footerColumn !== undefined) updateData.footerColumn = body.footerColumn.trim();
+    if (body.order !== undefined) updateData.order = body.order;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.items !== undefined) updateData.items = Array.isArray(body.items) ? body.items : [];
+    if (body.megaMenuPromo !== undefined) updateData.megaMenuPromo = body.megaMenuPromo;
+
     const updated = await NavigationMenu.findByIdAndUpdate(
       id,
-      {
-        label: body.label,
-        url: body.url,
-        location: body.location,
-        order: body.order,
-        isActive: body.isActive,
-      },
+      updateData,
       { new: true, runValidators: true }
     );
 

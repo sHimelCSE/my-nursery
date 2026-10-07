@@ -3,6 +3,9 @@ import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 import mongoose from "mongoose";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // ─────────────────────────────────────────────
 // GET /api/products/[id]
 // Fetch single product by Mongo ID

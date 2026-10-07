@@ -8,30 +8,115 @@ const DEFAULT_SECTIONS = [
     sectionType: "hero",
     title: "Bring Nature Into Your Living Space",
     subtitle:
-      "Handpicked, nursery-grown indoor plants, organic fertilizers, and premium gardening tools delivered directly to your doorstep across Bangladesh.",
+      "Curated house plants, pure organic soil conditioners, and artisanal ceramic planters designed to purify your atmosphere and inspire calm living across Bangladesh.",
+    layout: "vesoz-slider", // "vesoz-slider" (Variant A) or "classic-card" (Variant B)
     order: 0,
     isActive: true,
     content: {
-      badgeText: "🌱 Bangladesh's Premier Online Plant Nursery",
-      primaryBtnText: "🛒 Shop Plants",
+      badgeText: "#THE BOTANICAL SERIES",
+      primaryBtnText: "Shop Now",
       primaryBtnLink: "#products",
-      secondaryBtnText: "Gardening Tools →",
-      secondaryBtnLink: "/products?category=tool",
-      trustBadges: ["🔒 Secure Checkout", "🚚 Free Delivery ৳1000+", "🌿 100% Organic"],
+      secondaryBtnText: "Today's Deals",
+      secondaryBtnLink: "#deals",
+      slides: [
+        {
+          id: "slide-1",
+          tagline: "#THE BOTANICAL SERIES",
+          title: "Bring Nature Into Your Living Space",
+          subtitle:
+            "Curated house plants, pure organic soil conditioners, and artisanal ceramic planters designed to purify your atmosphere and inspire calm living across Bangladesh.",
+          buttonText: "Shop Now",
+          buttonLink: "#products",
+          secondaryBtnText: "Today's Deals",
+          secondaryBtnLink: "#deals",
+          image: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=1000&q=85",
+          badgePrice: "৳320",
+          badgeTitle: "Starting From",
+        },
+        {
+          id: "slide-2",
+          tagline: "#AIR PURIFIER COLLECTION",
+          title: "Breathe Cleaner Air With Living Foliage",
+          subtitle:
+            "NASA-recommended indoor plants that naturally filter benzene, formaldehyde, and dust from urban homes and modern workspaces.",
+          buttonText: "Explore Foliage",
+          buttonLink: "/products?category=plant",
+          secondaryBtnText: "Care Guides",
+          secondaryBtnLink: "#blog",
+          image: "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=1000&q=85",
+          badgePrice: "৳450",
+          badgeTitle: "Fresh Arrival",
+        },
+        {
+          id: "slide-3",
+          tagline: "#ORGANIC SOIL & CARE",
+          title: "Nourish Every Root with 100% Organic Mediums",
+          subtitle:
+            "Enriched vermicompost, slow-release bio-fertilizers, and breathable terracotta pots for flourishing balconies and rooftop gardens.",
+          buttonText: "Shop Fertilizers",
+          buttonLink: "/products?category=fertilizer",
+          secondaryBtnText: "Learn More",
+          secondaryBtnLink: "/about",
+          image: "https://images.unsplash.com/photo-1502977249166-824b3a8a4d6d?w=1000&q=85",
+          badgePrice: "৳180",
+          badgeTitle: "Best Seller",
+        },
+      ],
+      cardImage: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=85",
+      cardPlantName: "Monstera Deliciosa",
+      cardStartingPrice: "৳320",
+      trustMetrics: [
+        { value: "500+", label: "Rare Varieties" },
+        { value: "100%", label: "Acclimatized" },
+        { value: "48-Hr", label: "Replacement" },
+      ],
     },
   },
   {
     sectionType: "categories",
-    title: "GreenLeaf at a Glance",
-    subtitle: "Trusted by plant parents in all 64 districts",
+    title: "Shop by Botanical Category",
+    subtitle: "Curated Collections",
+    layout: "pastel-cards",
     order: 1,
     isActive: true,
     content: {
-      stats: [
-        { icon: "🌿", value: "500+", label: "Plant Varieties" },
-        { icon: "🚚", value: "1–2d", label: "Fast Delivery" },
-        { icon: "😊", value: "10K+", label: "Happy Customers" },
-        { icon: "♻️", value: "100%", label: "Organic Products" },
+      categories: [
+        {
+          id: "top-rated",
+          title: "Top-Rated Plants",
+          category: "plant",
+          count: "120+",
+          bgColor: "bg-[#E8F5E9]",
+          textColor: "text-[#2D5A27]",
+          image: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600&q=80",
+        },
+        {
+          id: "indoor-foliage",
+          title: "Indoor Foliage",
+          category: "plant",
+          count: "85+",
+          bgColor: "bg-[#E3F2FD]",
+          textColor: "text-sky-900",
+          image: "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=600&q=80",
+        },
+        {
+          id: "best-sellers",
+          title: "Best-Sellers",
+          category: "fertilizer",
+          count: "45+",
+          bgColor: "bg-[#FFF3E0]",
+          textColor: "text-amber-900",
+          image: "https://images.unsplash.com/photo-1502977249166-824b3a8a4d6d?w=600&q=80",
+        },
+        {
+          id: "gardening-tools",
+          title: "Gardening Tools",
+          category: "tool",
+          count: "60+",
+          bgColor: "bg-[#F1F8E9]",
+          textColor: "text-[#33691E]",
+          image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=600&q=80",
+        },
       ],
     },
   },
@@ -55,10 +140,10 @@ const DEFAULT_SECTIONS = [
     content: {
       badgeText: "Why GreenLeaf",
       features: [
-        { icon: "🌿", title: "Fresh & Healthy", desc: "Every plant nursery-grown and quality-checked before dispatch." },
-        { icon: "🚚", title: "Fast Delivery", desc: "Same-day in Dhaka · Next-day across Bangladesh." },
-        { icon: "♻️", title: "Eco-Friendly", desc: "Sustainable packing and organically grown products only." },
-        { icon: "💬", title: "Expert Support", desc: "Free care advice from our certified horticulture team." },
+        { icon: "Sprout", title: "Fresh & Healthy", desc: "Every plant nursery-grown and quality-checked before dispatch." },
+        { icon: "Truck", title: "Fast Delivery", desc: "Same-day in Dhaka · Next-day across Bangladesh." },
+        { icon: "ShieldCheck", title: "Eco-Friendly", desc: "Sustainable packing and organically grown products only." },
+        { icon: "Headphones", title: "Expert Support", desc: "Free care advice from our certified horticulture team." },
       ],
     },
   },
@@ -70,8 +155,8 @@ const DEFAULT_SECTIONS = [
     order: 4,
     isActive: true,
     content: {
-      badgeText: "🌿 Special Offer",
-      buttonText: "🛒 Shop Now",
+      badgeText: "Special Offer",
+      buttonText: "Shop Now",
       buttonLink: "#products",
     },
   },
@@ -116,6 +201,33 @@ export async function GET(request) {
     if (!sections || sections.length === 0) {
       await PageSection.insertMany(DEFAULT_SECTIONS);
       sections = await PageSection.find().sort({ order: 1 });
+    } else {
+      // Seamlessly upgrade existing sections if they lack slides or category items
+      const hero = sections.find((s) => s.sectionType === "hero");
+      if (hero && (!hero.content?.slides || hero.content.slides.length === 0 || !hero.layout)) {
+        hero.layout = hero.layout || "vesoz-slider";
+        hero.content = {
+          ...(hero.content || {}),
+          slides: DEFAULT_SECTIONS[0].content.slides,
+          cardImage: DEFAULT_SECTIONS[0].content.cardImage,
+          cardPlantName: DEFAULT_SECTIONS[0].content.cardPlantName,
+          cardStartingPrice: DEFAULT_SECTIONS[0].content.cardStartingPrice,
+          trustMetrics: DEFAULT_SECTIONS[0].content.trustMetrics,
+        };
+        await hero.save();
+      }
+
+      const cats = sections.find((s) => s.sectionType === "categories");
+      if (cats && (!cats.content?.categories || cats.content.categories.length === 0)) {
+        cats.title = cats.title || DEFAULT_SECTIONS[1].title;
+        cats.subtitle = cats.subtitle || DEFAULT_SECTIONS[1].subtitle;
+        cats.layout = cats.layout || "pastel-cards";
+        cats.content = {
+          ...(cats.content || {}),
+          categories: DEFAULT_SECTIONS[1].content.categories,
+        };
+        await cats.save();
+      }
     }
 
     // If request is from unauthenticated public visitor, return only active sections
@@ -146,7 +258,7 @@ export async function POST(request) {
 
     await dbConnect();
     const body = await request.json();
-    const { sectionType, title, subtitle, content } = body;
+    const { sectionType, title, subtitle, content, layout, backgroundColor, textColor, blocks } = body;
 
     if (!sectionType) {
       return NextResponse.json(
@@ -164,6 +276,10 @@ export async function POST(request) {
       title: title || "New Section",
       subtitle: subtitle || "",
       content: content || {},
+      layout: layout || "2-column",
+      backgroundColor: backgroundColor || "#F8FAF8",
+      textColor: textColor || "#1F2937",
+      blocks: Array.isArray(blocks) ? blocks : [],
       order: nextOrder,
       isActive: true,
     });

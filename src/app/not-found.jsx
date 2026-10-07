@@ -13,23 +13,23 @@ import {
 export default function NotFound() {
   return (
     <div className="min-h-[85vh] bg-[#FAFBF9] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 relative overflow-hidden select-none">
-      
+
       {/* ─── Ambient Botanical Glow ───────────────────────────────────────── */}
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl opacity-60" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-50/60 rounded-full blur-3xl opacity-60" />
 
       <div className="max-w-xl w-full text-center relative z-10 space-y-8">
-        
+
         {/* ─── Floating Plant & 404 Visual ─────────────────────────────────── */}
         <div className="relative flex flex-col items-center justify-center">
-          
+
           {/* Giant Background 404 Number */}
           <div className="text-8xl sm:text-9xl md:text-[11rem] font-black tracking-widest text-[#2D6A4F]/10 select-none leading-none">
             404
           </div>
 
           {/* Floating Plant & Leaves Animation in Foreground */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center hidden">
             <motion.div
               animate={{
                 y: [0, -12, 0],
@@ -103,9 +103,6 @@ export default function NotFound() {
             Oops! Looks Like This Path Wandered Off the Garden
           </h1>
 
-          <p className="text-xs sm:text-sm font-semibold text-emerald-800">
-            (পেজটি খুঁজে পাওয়া যায়নি)
-          </p>
 
           <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
             The page you are looking for might have been moved, pruned, or never existed in our nursery greenhouse. Let us guide you back to safety.
@@ -125,7 +122,7 @@ export default function NotFound() {
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] active:scale-[0.98] text-white font-medium text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
           >
             <HomeOutlined />
-            <span>🌿 Return to Garden (হোমপেজে ফিরে যান)</span>
+            <span>Return to Garden</span>
           </Link>
 
           {/* Secondary Products Outline Button */}
@@ -134,7 +131,7 @@ export default function NotFound() {
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-emerald-300 text-emerald-800 bg-white hover:bg-emerald-50 active:scale-[0.98] font-medium text-xs sm:text-sm shadow-2xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
           >
             <ShoppingOutlined />
-            <span>Browse Products (গাছ ও সার দেখুন)</span>
+            <span>Browse Products</span>
           </Link>
         </motion.div>
 

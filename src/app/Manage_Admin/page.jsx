@@ -43,8 +43,40 @@ import {
   FallOutlined,
   DollarCircleOutlined,
   LayoutOutlined,
+  TagsOutlined,
+  SettingOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import ThemeBuilderTab from "@/components/ThemeBuilderTab";
+import SiteSettingsTab from "@/components/SiteSettingsTab";
+import ReviewsTab from "@/components/ReviewsTab";
+import BlogsManagerTab from "@/components/BlogsManagerTab";
+import SubscribersTab from "@/components/SubscribersTab";
+import imageCompression from "browser-image-compression";
+import {
+  UploadCloud,
+  Image as ImageIcon,
+  X as CloseIcon,
+  Loader2,
+  Sprout,
+  Tag as TagIcon,
+  FolderTree,
+  Layers,
+  Trash2,
+  Edit3,
+  Globe,
+  Check,
+  ExternalLink,
+  BookOpen,
+  Mail,
+  User,
+  Users,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  ShoppingBag,
+  Package,
+} from "lucide-react";
 
 // ── Chart Custom Tooltip ──────────────────────────────────────────────────
 function CustomChartTooltip({ active, payload, label }) {
@@ -133,8 +165,17 @@ export default function AdminDashboardPage() {
   const [admin, setAdmin] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Active Tab: "overview" | "orders" | "products" | "expenses" | "customers" | "notifications" | "team"
+  // Active Tab: "overview" | "orders" | "products" | "expenses" | "customers" | "notifications" | "team" | "reviews"
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Reviews count state
+  const [reviewsCount, setReviewsCount] = useState(0);
+
+  // Blogs count state
+  const [blogsCount, setBlogsCount] = useState(0);
+
+  // Subscribers count state
+  const [subscribersCount, setSubscribersCount] = useState(0);
 
   // Overview & Stats metrics state
   const [overview, setOverview] = useState(null);
@@ -187,6 +228,28 @@ export default function AdminDashboardPage() {
     images: "",
   });
 
+  // Product Image Upload & Compression state
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadStatusText, setUploadStatusText] = useState("");
+  const [deletingImageIndex, setDeletingImageIndex] = useState(null);
+
+  // Categories state
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [uploadingCatImage, setUploadingCatImage] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    image: "",
+    showInNavbar: true,
+    order: 0,
+  });
+
   // Team & permissions state
   const [team, setTeam] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
@@ -196,6 +259,7 @@ export default function AdminDashboardPage() {
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [customerSubTab, setCustomerSubTab] = useState("registered"); // "registered" | "subscribers"
 
   // Notifications state
   const [notifications, setNotifications] = useState([]);
@@ -230,6 +294,15 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     setMounted(true);
     checkAuth();
+
+    const handleNavigateTab = (e) => {
+      if (e?.detail) {
+        setActiveTab(e.detail);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+    window.addEventListener("admin:navigate-tab", handleNavigateTab);
+    return () => window.removeEventListener("admin:navigate-tab", handleNavigateTab);
   }, []);
 
   // ─────────────────────────────────────────────
@@ -298,6 +371,21 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await fetch("/api/admin/categories");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.categories || json.data)) {
+        setCategories(json.categories || json.data);
+      }
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
   const fetchTeam = async () => {
     try {
       setLoadingTeam(true);
@@ -341,6 +429,30 @@ export default function AdminDashboardPage() {
       console.error("Failed to load notifications:", err);
     } finally {
       setLoadingNotifications(false);
+    }
+  };
+
+  const fetchReviewsCount = async () => {
+    try {
+      const res = await fetch("/api/admin/reviews");
+      const json = await res.json();
+      if (json.success && json.summary) {
+        setReviewsCount(json.summary.totalReviews || 0);
+      }
+    } catch (err) {
+      console.error("Failed to load reviews count:", err);
+    }
+  };
+
+  const fetchSubscribersCount = async () => {
+    try {
+      const res = await fetch("/api/admin/subscribers");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.subscribers)) {
+        setSubscribersCount(json.subscribers.length);
+      }
+    } catch (err) {
+      console.error("Failed to load subscribers count:", err);
     }
   };
 
@@ -441,10 +553,13 @@ export default function AdminDashboardPage() {
       fetchOverview();
       fetchOrders();
       fetchProducts();
+      fetchCategories();
       fetchExpenses();
       fetchCustomers();
       fetchNotifications();
       fetchTeam();
+      fetchReviewsCount();
+      fetchSubscribersCount();
     }
   }, [admin]);
 
@@ -454,10 +569,13 @@ export default function AdminDashboardPage() {
     if (tabKey === "overview") fetchOverview();
     if (tabKey === "orders") fetchOrders();
     if (tabKey === "products") fetchProducts();
+    if (tabKey === "categories") fetchCategories();
     if (tabKey === "expenses") fetchExpenses();
     if (tabKey === "customers") fetchCustomers();
     if (tabKey === "notifications") fetchNotifications();
     if (tabKey === "team") fetchTeam();
+    if (tabKey === "reviews") fetchReviewsCount();
+    if (tabKey === "subscribers") fetchSubscribersCount();
   };
 
   // ─────────────────────────────────────────────
@@ -526,6 +644,289 @@ export default function AdminDashboardPage() {
       });
     }
     setIsProductModalOpen(true);
+  };
+
+  // Cloudinary Direct Unsigned Upload with Client-Side Compression
+  const handleImageFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      message.error("Cloudinary credentials are not configured in environment variables.");
+      return;
+    }
+
+    setUploadingImage(true);
+    setUploadStatusText("Compressing & Uploading...");
+
+    try {
+      const uploadedUrls = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadStatusText(`Compressing & Uploading (${i + 1}/${files.length})...`);
+
+        // Client-side compression: ~200KB, max 1080px, WebWorker
+        const options = {
+          maxSizeMB: 0.2,
+          maxWidthOrHeight: 1080,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+
+        // Upload compressed file directly to Cloudinary
+        const formData = new FormData();
+        formData.append("file", compressedFile);
+        formData.append("upload_preset", uploadPreset);
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await res.json();
+        if (data.secure_url) {
+          uploadedUrls.push(data.secure_url);
+        } else if (data.error?.message) {
+          throw new Error(data.error.message);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        const existing = productForm.images
+          ? productForm.images.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
+        const updated = [...existing, ...uploadedUrls].join(", ");
+        setProductForm((prev) => ({ ...prev, images: updated }));
+        message.success(`Uploaded ${uploadedUrls.length} compressed image(s) to Cloudinary successfully!`);
+      }
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err);
+      message.error(err.message || "Failed to upload image to Cloudinary.");
+    } finally {
+      setUploadingImage(false);
+      setUploadStatusText("");
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleRemoveProductImage = async (indexToRemove) => {
+    const urls = productForm.images
+      ? productForm.images.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    const targetUrl = urls[indexToRemove];
+    if (!targetUrl) return;
+
+    try {
+      setDeletingImageIndex(indexToRemove);
+
+      // 1. Call server-side Cloudinary Image Deletion API
+      const res = await fetch("/api/admin/cloudinary/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: targetUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        console.warn("Cloudinary deletion status:", data?.message);
+      }
+
+      // 2. Remove from local state
+      const filtered = urls.filter((_, i) => i !== indexToRemove);
+      setProductForm((prev) => ({ ...prev, images: filtered.join(", ") }));
+
+      // 3. Remove from MongoDB product document if editing
+      if (editingProduct?._id) {
+        await fetch("/api/admin/products", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: editingProduct._id,
+            images: filtered,
+          }),
+        });
+        fetchProducts();
+      }
+
+      // 4. Show success toast as requested
+      message.success("Image deleted from cloud & database.");
+    } catch (err) {
+      console.error("Failed to delete image:", err);
+      const filtered = urls.filter((_, i) => i !== indexToRemove);
+      setProductForm((prev) => ({ ...prev, images: filtered.join(", ") }));
+      message.success("Image removed from form.");
+    } finally {
+      setDeletingImageIndex(null);
+    }
+  };
+
+  // ─── Category Management Handlers ──────────────────────────────────────────
+  const openCategoryModal = (cat = null) => {
+    if (cat) {
+      setEditingCategory(cat);
+      setCategoryForm({
+        name: cat.name || "",
+        slug: cat.slug || "",
+        description: cat.description || "",
+        image: cat.image || "",
+        showInNavbar: cat.showInNavbar !== false,
+        order: cat.order ?? 0,
+      });
+    } else {
+      setEditingCategory(null);
+      setCategoryForm({
+        name: "",
+        slug: "",
+        description: "",
+        image: "",
+        showInNavbar: true,
+        order: categories.length,
+      });
+    }
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategoryUploadImage = async (e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      message.error("Cloudinary credentials are not configured.");
+      return;
+    }
+
+    setUploadingCatImage(true);
+    try {
+      const options = {
+        maxSizeMB: 0.2,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      const formData = new FormData();
+      formData.append("file", compressedFile);
+      formData.append("upload_preset", uploadPreset);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        setCategoryForm((prev) => ({ ...prev, image: data.secure_url }));
+        message.success("Category image uploaded successfully!");
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (err) {
+      message.error(err.message || "Failed to upload image");
+    } finally {
+      setUploadingCatImage(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryForm.name.trim()) {
+      message.error("Please enter a category name.");
+      return;
+    }
+
+    try {
+      setSavingCategory(true);
+      const isEdit = Boolean(editingCategory?._id);
+      const url = "/api/admin/categories";
+      const method = isEdit ? "PUT" : "POST";
+      const payload = {
+        ...(isEdit && { _id: editingCategory._id }),
+        name: categoryForm.name.trim(),
+        slug: categoryForm.slug.trim(),
+        description: categoryForm.description.trim(),
+        image: categoryForm.image.trim(),
+        showInNavbar: categoryForm.showInNavbar,
+        order: Number(categoryForm.order) || 0,
+      };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to save category");
+      }
+
+      message.success(
+        isEdit ? "Category updated successfully!" : "Category created successfully!"
+      );
+      setIsCategoryModalOpen(false);
+      fetchCategories();
+    } catch (err) {
+      message.error(err.message || "Could not save category.");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleToggleNavbarCategory = async (cat) => {
+    try {
+      const nextShow = !cat.showInNavbar;
+      const res = await fetch("/api/admin/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: cat._id,
+          showInNavbar: nextShow,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        message.success(
+          nextShow ? `"${cat.name}" added to Navbar.` : `"${cat.name}" hidden from Navbar.`
+        );
+        fetchCategories();
+      }
+    } catch (err) {
+      message.error("Failed to update category visibility.");
+    }
+  };
+
+  const handleDeleteCategory = (cat) => {
+    Modal.confirm({
+      title: "Delete Category?",
+      content: `Are you sure you want to delete "${cat.name}"? Products currently in this category will keep their records.`,
+      okText: "Yes, Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          const res = await fetch(`/api/admin/categories?id=${cat._id}`, {
+            method: "DELETE",
+          });
+          const json = await res.json();
+          if (res.ok && json.success) {
+            message.success("Category deleted successfully.");
+            fetchCategories();
+          } else {
+            throw new Error(json.message || "Failed to delete");
+          }
+        } catch (err) {
+          message.error(err.message || "Could not delete category.");
+        }
+      },
+    });
   };
 
   // Save Product (Create or Update)
@@ -792,7 +1193,7 @@ export default function AdminDashboardPage() {
       {/* ═══════════════════════════════════════════════════════════════════════
           SIDEBAR NAVIGATION (Fixed Left Sidebar)
       ═══════════════════════════════════════════════════════════════════════ */}
-      <aside className="fixed inset-y-0 left-0 w-64 h-screen z-40 bg-white border-r border-gray-200 flex flex-col justify-between overflow-y-auto">
+      <aside className="fixed inset-y-0 left-0 w-80 h-screen z-40 bg-white border-r border-gray-200 flex flex-col justify-between overflow-y-auto">
         <div className="flex flex-col">
           {/* Brand Header */}
           <div className="p-5 px-6 border-b border-gray-100 flex items-center justify-between">
@@ -802,7 +1203,7 @@ export default function AdminDashboardPage() {
               </div>
               <div>
                 <h1 className="font-bold text-sm text-emerald-900 tracking-tight">
-                  GreenLeaf Admin
+                  Admin Panel
                 </h1>
                 <p className="text-[10px] text-gray-400 font-mono">Executive Portal</p>
               </div>
@@ -854,25 +1255,48 @@ export default function AdminDashboardPage() {
                 badge: products.length,
               },
               {
+                key: "reviews",
+                label: "Reviews",
+                icon: <StarOutlined />,
+                badge: reviewsCount > 0 ? reviewsCount : null,
+              },
+              {
+                key: "blogs",
+                label: "Blogs",
+                icon: <BookOpen className="w-4 h-4" />,
+                badge: blogsCount > 0 ? blogsCount : null,
+              },
+              {
+                key: "categories",
+                label: "Categories",
+                icon: <TagsOutlined />,
+                badge: categories.length > 0 ? categories.length : null,
+              },
+              {
                 key: "theme",
-                label: "🎨 Theme & Menus",
+                label: "Theme & Menus",
                 icon: <LayoutOutlined />,
               },
               {
+                key: "settings",
+                label: "Site Settings",
+                icon: <SettingOutlined />,
+              },
+              {
                 key: "expenses",
-                label: "💸 Expenses (খরচ)",
+                label: "Expenses",
                 icon: <WalletOutlined />,
                 badge: expenses.length > 0 ? `${expenses.length}` : null,
               },
               {
                 key: "customers",
-                label: "👥 Customers (গ্রাহক)",
-                icon: <UserOutlined />,
+                label: "Customers (গ্রাহক)",
+                icon: <Users className="w-4 h-4" />,
                 badge: customers.length,
               },
               {
                 key: "notifications",
-                label: "🔔 Notifications",
+                label: "Notifications",
                 icon: <BellOutlined />,
                 badge: unreadNotifsCount > 0 ? unreadNotifsCount : null,
                 alert: unreadNotifsCount > 0,
@@ -890,11 +1314,10 @@ export default function AdminDashboardPage() {
                 <button
                   key={item.key}
                   onClick={() => handleTabChange(item.key)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-[#2D6A4F] text-white shadow-sm font-medium"
-                      : "text-gray-600 hover:bg-emerald-50 hover:text-emerald-800 rounded-xl font-medium"
-                  }`}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${isActive
+                    ? "bg-[#2D6A4F] text-white shadow-sm font-medium"
+                    : "text-gray-600 hover:bg-emerald-50 hover:text-emerald-800 rounded-xl font-medium"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`text-sm ${isActive ? "text-white" : "text-emerald-600/70"}`}>
@@ -904,15 +1327,14 @@ export default function AdminDashboardPage() {
                   </div>
                   {item.badge !== undefined && item.badge !== null && (
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        item.alert
-                          ? isActive
-                            ? "bg-amber-300 text-amber-950 font-bold"
-                            : "bg-amber-100 text-amber-800"
-                          : isActive
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.alert
+                        ? isActive
+                          ? "bg-amber-300 text-amber-950 font-bold"
+                          : "bg-amber-100 text-amber-800"
+                        : isActive
                           ? "bg-white/20 text-white"
                           : "bg-emerald-100 text-emerald-800"
-                      }`}
+                        }`}
                     >
                       {item.badge}
                     </span>
@@ -930,7 +1352,7 @@ export default function AdminDashboardPage() {
             target="_blank"
             className="w-full flex items-center justify-center gap-2 border border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 rounded-xl py-2 px-3 text-xs font-medium transition-all text-center"
           >
-            🌐 Visit Live Store ↗
+            Visit Live Store ↗
           </Link>
           <button
             onClick={handleLogout}
@@ -944,7 +1366,7 @@ export default function AdminDashboardPage() {
       {/* ═══════════════════════════════════════════════════════════════════════
           MAIN CONTENT AREA
       ═══════════════════════════════════════════════════════════════════════ */}
-      <main className="ml-64 min-h-screen flex flex-col bg-[#F4F6F4]">
+      <main className="ml-80 min-h-screen flex flex-col bg-[#F4F6F4]">
 
         {/* Top Header Bar */}
         <header className="sticky top-0 z-30 bg-[#F4F6F4]/95 backdrop-blur-md border-b border-gray-200/80 px-8 py-4 flex items-center justify-between">
@@ -953,10 +1375,13 @@ export default function AdminDashboardPage() {
               {activeTab === "overview" && "Dashboard Overview & Financial Analytics"}
               {activeTab === "orders" && "Customer Orders Management"}
               {activeTab === "products" && "Product Catalog & Cost Tracking"}
-              {activeTab === "theme" && "🎨 Homepage Theme Builder & Navigation Menus (পেজ বিল্ডার)"}
-              {activeTab === "expenses" && "💸 Business Expenses Management (ব্যবসায়িক খরচ)"}
-              {activeTab === "customers" && "👥 Customers (গ্রাহক তালিকা)"}
-              {activeTab === "notifications" && "🔔 Notifications Center (বিজ্ঞপ্তি কেন্দ্র)"}
+              {activeTab === "blogs" && "Botanical Blog & Plant Care Guides Management"}
+              {activeTab === "categories" && "Categories & Storefront Navigation"}
+              {activeTab === "theme" && "Homepage Theme Builder & Navigation Menus"}
+              {activeTab === "settings" && "Site Settings & Global CMS"}
+              {activeTab === "expenses" && "Business Expenses Management"}
+              {activeTab === "customers" && (customerSubTab === "registered" ? "Customers & Registered User Directory" : "Newsletter Subscribers & Audience Management")}
+              {activeTab === "notifications" && "Notifications Center"}
               {activeTab === "team" && "Administrator Team & Access Permissions"}
             </h2>
             <p className="text-xs text-[#6B7280]">
@@ -970,7 +1395,7 @@ export default function AdminDashboardPage() {
               target="_blank"
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 hover:text-emerald-900 text-xs font-bold shadow-2xs transition-all cursor-pointer"
             >
-              🌐 Visit Live Store (ওয়েবসাইট দেখুন) ↗
+              Visit Live Store ↗
             </Link>
 
             {/* Notification Bell Dropdown */}
@@ -1035,9 +1460,8 @@ export default function AdminDashboardPage() {
                             <div
                               key={n._id}
                               onClick={() => handleMarkNotificationRead(n._id, n.link)}
-                              className={`p-3.5 px-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-start gap-3 ${
-                                !n.isRead ? "bg-emerald-50/20" : ""
-                              }`}
+                              className={`p-3.5 px-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-start gap-3 ${!n.isRead ? "bg-emerald-50/20" : ""
+                                }`}
                             >
                               <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-sm shrink-0 mt-0.5">
                                 {badge.icon}
@@ -1086,6 +1510,7 @@ export default function AdminDashboardPage() {
                 if (activeTab === "overview") fetchOverview();
                 if (activeTab === "orders") fetchOrders();
                 if (activeTab === "products") fetchProducts();
+                if (activeTab === "categories") fetchCategories();
                 if (activeTab === "expenses") fetchExpenses();
                 if (activeTab === "customers") fetchCustomers();
                 if (activeTab === "notifications") fetchNotifications();
@@ -1102,6 +1527,14 @@ export default function AdminDashboardPage() {
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#40916C] shadow-sm transition-all cursor-pointer"
               >
                 <PlusOutlined /> Add New Product
+              </button>
+            )}
+            {activeTab === "categories" && (
+              <button
+                onClick={() => openCategoryModal()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#40916C] shadow-sm transition-all cursor-pointer"
+              >
+                <PlusOutlined /> Add New Category
               </button>
             )}
           </div>
@@ -1212,26 +1645,23 @@ export default function AdminDashboardPage() {
                   const isProfitable = net >= 0;
                   return (
                     <div
-                      className={`rounded-3xl p-5 border shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
-                        isProfitable
-                          ? "bg-white border-emerald-300 bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30"
-                          : "bg-white border-rose-300 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30"
-                      }`}
+                      className={`rounded-3xl p-5 border shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${isProfitable
+                        ? "bg-white border-emerald-300 bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30"
+                        : "bg-white border-rose-300 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30"
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-3">
                         <span
-                          className={`text-[11px] font-bold uppercase tracking-wider ${
-                            isProfitable ? "text-emerald-800" : "text-rose-800"
-                          }`}
+                          className={`text-[11px] font-bold uppercase tracking-wider ${isProfitable ? "text-emerald-800" : "text-rose-800"
+                            }`}
                         >
                           Net Profit (আসল লাভ)
                         </span>
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-xs font-bold ${
-                            isProfitable
-                              ? "bg-[#2D6A4F] text-white"
-                              : "bg-rose-500 text-white"
-                          }`}
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-xs font-bold ${isProfitable
+                            ? "bg-[#2D6A4F] text-white"
+                            : "bg-rose-500 text-white"
+                            }`}
                         >
                           {isProfitable ? <RiseOutlined /> : <FallOutlined />}
                         </div>
@@ -1239,9 +1669,8 @@ export default function AdminDashboardPage() {
                       <div>
                         <div className="flex items-baseline gap-1.5">
                           <span
-                            className={`text-2xl font-black ${
-                              isProfitable ? "text-[#2D6A4F]" : "text-rose-600"
-                            }`}
+                            className={`text-2xl font-black ${isProfitable ? "text-[#2D6A4F]" : "text-rose-600"
+                              }`}
                           >
                             {isProfitable ? "+" : ""}৳{net.toLocaleString("en-BD")}
                           </span>
@@ -1400,15 +1829,14 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                ord.status === "Delivered"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : ord.status === "Processing"
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${ord.status === "Delivered"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : ord.status === "Processing"
                                   ? "bg-blue-50 text-blue-700 border border-blue-200"
                                   : ord.status === "Cancelled"
-                                  ? "bg-red-50 text-red-700 border border-red-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}
+                                    ? "bg-red-50 text-red-700 border border-red-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}
                             >
                               {ord.status || "Pending"}
                             </span>
@@ -1444,11 +1872,10 @@ export default function AdminDashboardPage() {
                       <button
                         key={st}
                         onClick={() => setOrderFilter(st)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
-                          orderFilter === st
-                            ? "bg-[#2D6A4F] text-white shadow-xs"
-                            : "text-gray-600 hover:bg-gray-100"
-                        }`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${orderFilter === st
+                          ? "bg-[#2D6A4F] text-white shadow-xs"
+                          : "text-gray-600 hover:bg-gray-100"
+                          }`}
                       >
                         {st}
                       </button>
@@ -1518,11 +1945,11 @@ export default function AdminDashboardPage() {
                               loading={isUpdating}
                               onChange={(val) => handleOrderStatusChange(ord._id, val)}
                               options={[
-                                { value: "Pending", label: "⏳ Pending" },
-                                { value: "Processing", label: "🌱 Processing" },
-                                { value: "Shipped", label: "🚚 Shipped" },
-                                { value: "Delivered", label: "✅ Delivered" },
-                                { value: "Cancelled", label: "❌ Cancelled" },
+                                { value: "Pending", label: "Pending" },
+                                { value: "Processing", label: "Processing" },
+                                { value: "Shipped", label: "Shipped" },
+                                { value: "Delivered", label: "Delivered" },
+                                { value: "Cancelled", label: "Cancelled" },
                               ]}
                             />
                           </div>
@@ -1611,10 +2038,10 @@ export default function AdminDashboardPage() {
                     style={{ width: 150 }}
                     size="middle"
                     options={[
-                      { value: "all", label: "✨ All Categories" },
-                      { value: "plant", label: "🌿 Plants" },
-                      { value: "fertilizer", label: "🌱 Fertilizers" },
-                      { value: "tool", label: "🪴 Tools & Pots" },
+                      { value: "all", label: "All Categories" },
+                      { value: "plant", label: "Plants" },
+                      { value: "fertilizer", label: "Fertilizers" },
+                      { value: "tool", label: "Tools & Pots" },
                     ]}
                   />
                   <span className="text-xs text-gray-400">
@@ -1661,7 +2088,7 @@ export default function AdminDashboardPage() {
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <span>🌿</span>
+                                  <Sprout className="w-5 h-5 text-[#2D6A4F]" />
                                 )}
                               </div>
                               <div className="min-w-0">
@@ -1682,13 +2109,12 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="py-3 px-4">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                prod.stock_quantity === 0
-                                  ? "bg-red-50 text-red-600"
-                                  : prod.stock_quantity <= 5
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${prod.stock_quantity === 0
+                                ? "bg-red-50 text-red-600"
+                                : prod.stock_quantity <= 5
                                   ? "bg-orange-50 text-orange-600"
                                   : "bg-emerald-50 text-emerald-700"
-                              }`}
+                                }`}
                             >
                               {prod.stock_quantity} left
                             </span>
@@ -1851,13 +2277,12 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="py-3">
                               <span
-                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                  m.status === "approved"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : m.status === "pending"
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${m.status === "approved"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : m.status === "pending"
                                     ? "bg-amber-50 text-amber-700 border border-amber-200"
                                     : "bg-red-50 text-red-700 border border-red-200"
-                                }`}
+                                  }`}
                               >
                                 {m.status}
                               </span>
@@ -1902,192 +2327,265 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ═════════════════════════════════════════════════════════════════
-              TAB 5: CUSTOMERS (গ্রাহক তালিকা)
+              TAB 5: CUSTOMERS & AUDIENCE MANAGEMENT (গ্রাহক ও সাবস্ক্রাইবার)
           ═════════════════════════════════════════════════════════════════ */}
           {activeTab === "customers" && (
             <div className="space-y-6">
-              {/* Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">Total Registered Customers</p>
-                    <p className="text-2xl font-black text-[#1A2E22] mt-1">{customers.length}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Verified user accounts</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl font-bold">
-                    👥
-                  </div>
+              {/* Top Sub-Tab Navigation Toggle */}
+              <div className="bg-white rounded-2xl p-2.5 border border-gray-100 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 bg-[#F4F6F4] p-1.5 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerSubTab("registered")}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      customerSubTab === "registered"
+                        ? "bg-[#2D6A4F] text-white shadow-xs"
+                        : "text-gray-600 hover:text-[#2D6A4F] hover:bg-white/60"
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Registered Users</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        customerSubTab === "registered"
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      {customers.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustomerSubTab("subscribers")}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      customerSubTab === "subscribers"
+                        ? "bg-[#2D6A4F] text-white shadow-xs"
+                        : "text-gray-600 hover:text-[#2D6A4F] hover:bg-white/60"
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Newsletter Subscribers</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        customerSubTab === "subscribers"
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 text-[#2D6A4F]"
+                      }`}
+                    >
+                      {subscribersCount}
+                    </span>
+                  </button>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">Active Buyers</p>
-                    <p className="text-2xl font-black text-[#2D6A4F] mt-1">
-                      {customers.filter((c) => (c.totalOrders || 0) > 0).length}
-                    </p>
-                    <p className="text-[11px] text-emerald-600 mt-0.5">Placed at least 1 order</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center text-xl font-bold">
-                    🛍️
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">Orders by Registered Accounts</p>
-                    <p className="text-2xl font-black text-[#1A2E22] mt-1">
-                      {customers.reduce((acc, c) => acc + (c.totalOrders || 0), 0)}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Tracked in database</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-bold">
-                    📦
-                  </div>
+                <div className="text-xs text-gray-500 pr-2 hidden sm:block">
+                  {customerSubTab === "registered"
+                    ? "Verified storefront user accounts"
+                    : "Direct marketing newsletter audience"}
                 </div>
               </div>
 
-              {/* Main Card with Search Bar & Table */}
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-2xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-extrabold text-[#1A2E22]">
-                      👥 Customers Directory (গ্রাহক তালিকা)
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Search and inspect customer profiles, joined dates, and order history
-                    </p>
+              {/* Sub-Tab A: Registered Users */}
+              {customerSubTab === "registered" && (
+                <div className="space-y-6">
+                  {/* Stat Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500">Total Registered Customers</p>
+                        <p className="text-2xl font-black text-[#1A2E22] mt-1">{customers.length}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Verified user accounts</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xl font-bold">
+                        <Users className="w-6 h-6 stroke-[2]" />
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500">Active Buyers</p>
+                        <p className="text-2xl font-black text-[#2D6A4F] mt-1">
+                          {customers.filter((c) => (c.totalOrders || 0) > 0).length}
+                        </p>
+                        <p className="text-[11px] text-emerald-600 mt-0.5">Placed at least 1 order</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center text-xl font-bold">
+                        <ShoppingBag className="w-6 h-6 stroke-[2]" />
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500">Orders by Registered Accounts</p>
+                        <p className="text-2xl font-black text-[#1A2E22] mt-1">
+                          {customers.reduce((acc, c) => acc + (c.totalOrders || 0), 0)}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Tracked in database</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-bold">
+                        <Package className="w-6 h-6 stroke-[2]" />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Search Bar */}
-                  <div className="relative w-full sm:w-72">
-                    <SearchOutlined className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                    <input
-                      type="text"
-                      placeholder="Search name, email, phone..."
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F]"
-                    />
-                    {customerSearch && (
-                      <button
-                        onClick={() => setCustomerSearch("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
-                      >
-                        ✕
-                      </button>
+                  {/* Main Card with Search Bar & Table */}
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-2xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-base font-extrabold text-[#1A2E22] flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-[#2D6A4F]" />
+                          <span>Customers Directory (গ্রাহক তালিকা)</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Search and inspect customer profiles, joined dates, and order history
+                        </p>
+                      </div>
+
+                      {/* Search Bar */}
+                      <div className="relative w-full sm:w-72">
+                        <SearchOutlined className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="text"
+                          placeholder="Search name, email, phone..."
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F]"
+                        />
+                        {customerSearch && (
+                          <button
+                            onClick={() => setCustomerSearch("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                          >
+                            <CloseIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Table */}
+                    {loadingCustomers ? (
+                      <div className="py-12 text-center text-xs text-gray-400">
+                        <SyncOutlined spin className="text-xl mb-2 text-[#2D6A4F]" />
+                        <p>Loading registered customer database...</p>
+                      </div>
+                    ) : filteredCustomers.length === 0 ? (
+                      <div className="py-12 text-center text-xs text-gray-400">
+                        <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="font-semibold text-gray-600">No customers found</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {customerSearch ? "Try adjusting your search query" : "No users registered yet"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                              <th className="pb-3">Customer Name</th>
+                              <th className="pb-3">Email Address</th>
+                              <th className="pb-3">Phone Number</th>
+                              <th className="pb-3">Joined Date</th>
+                              <th className="pb-3">Role</th>
+                              <th className="pb-3 text-right">Total Orders</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredCustomers.map((cust) => {
+                              const initial = cust.name?.charAt(0)?.toUpperCase() || "U";
+                              return (
+                                <tr key={cust._id} className="hover:bg-gray-50/70 transition-colors">
+                                  {/* Customer Name */}
+                                  <td className="py-3.5 pr-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#B7E4C7]">
+                                        {initial}
+                                      </div>
+                                      <div>
+                                        <p className="font-bold text-[#1A2E22]">{cust.name}</p>
+                                        {cust.address && cust.address !== "—" && (
+                                          <p className="text-[10px] text-gray-400 truncate max-w-[200px] flex items-center gap-1 mt-0.5">
+                                            <MapPin className="w-2.5 h-2.5 shrink-0" /> {cust.address}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Email */}
+                                  <td className="py-3.5 pr-4 text-gray-700 font-mono text-[11px]">
+                                    {cust.email}
+                                  </td>
+
+                                  {/* Phone */}
+                                  <td className="py-3.5 pr-4">
+                                    {cust.phone && cust.phone !== "—" ? (
+                                      <span className="inline-flex items-center gap-1 font-mono text-[11px] text-gray-700 bg-gray-100 px-2 py-0.5 rounded-lg">
+                                        <Phone className="w-2.5 h-2.5 text-gray-500" /> {cust.phone}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">Not provided</span>
+                                    )}
+                                  </td>
+
+                                  {/* Joined Date */}
+                                  <td className="py-3.5 pr-4 text-gray-500 text-[11px]">
+                                    {cust.createdAt
+                                      ? new Date(cust.createdAt).toLocaleDateString("en-GB", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                      })
+                                      : "—"}
+                                  </td>
+
+                                  {/* Role */}
+                                  <td className="py-3.5 pr-4">
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${cust.role === "admin"
+                                        ? "bg-purple-100 text-purple-700 border border-purple-200"
+                                        : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                        }`}
+                                    >
+                                      {cust.role === "admin" ? (
+                                        <>
+                                          <ShieldCheck className="w-3 h-3" /> Admin
+                                        </>
+                                      ) : (
+                                        <>
+                                          <User className="w-3 h-3" /> User
+                                        </>
+                                      )}
+                                    </span>
+                                  </td>
+
+                                  {/* Total Orders */}
+                                  <td className="py-3.5 text-right">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${cust.totalOrders > 0
+                                        ? "bg-[#D8F3DC] text-[#1B4332]"
+                                        : "bg-gray-100 text-gray-500"
+                                        }`}
+                                    >
+                                      <Package className="w-3.5 h-3.5" />
+                                      <span>{cust.totalOrders} {cust.totalOrders === 1 ? "order" : "orders"}</span>
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 </div>
+              )}
 
-                {/* Table */}
-                {loadingCustomers ? (
-                  <div className="py-12 text-center text-xs text-gray-400">
-                    <SyncOutlined spin className="text-xl mb-2 text-[#2D6A4F]" />
-                    <p>Loading registered customer database...</p>
-                  </div>
-                ) : filteredCustomers.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-gray-400">
-                    <p className="text-2xl mb-1">🔍</p>
-                    <p className="font-semibold text-gray-600">No customers found</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {customerSearch ? "Try adjusting your search query" : "No users registered yet"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                          <th className="pb-3">Customer Name</th>
-                          <th className="pb-3">Email Address</th>
-                          <th className="pb-3">Phone Number</th>
-                          <th className="pb-3">Joined Date</th>
-                          <th className="pb-3">Role</th>
-                          <th className="pb-3 text-right">Total Orders</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredCustomers.map((cust) => {
-                          const initial = cust.name?.charAt(0)?.toUpperCase() || "U";
-                          return (
-                            <tr key={cust._id} className="hover:bg-gray-50/70 transition-colors">
-                              {/* Customer Name */}
-                              <td className="py-3.5 pr-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center font-bold text-xs shrink-0 border border-[#B7E4C7]">
-                                    {initial}
-                                  </div>
-                                  <div>
-                                    <p className="font-bold text-[#1A2E22]">{cust.name}</p>
-                                    {cust.address && cust.address !== "—" && (
-                                      <p className="text-[10px] text-gray-400 truncate max-w-[200px]">
-                                        📍 {cust.address}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Email */}
-                              <td className="py-3.5 pr-4 text-gray-700 font-mono text-[11px]">
-                                {cust.email}
-                              </td>
-
-                              {/* Phone */}
-                              <td className="py-3.5 pr-4">
-                                {cust.phone && cust.phone !== "—" ? (
-                                  <span className="inline-flex items-center gap-1 font-mono text-[11px] text-gray-700 bg-gray-100 px-2 py-0.5 rounded-lg">
-                                    📞 {cust.phone}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400 italic">Not provided</span>
-                                )}
-                              </td>
-
-                              {/* Joined Date */}
-                              <td className="py-3.5 pr-4 text-gray-500 text-[11px]">
-                                {cust.createdAt
-                                  ? new Date(cust.createdAt).toLocaleDateString("en-GB", {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    })
-                                  : "—"}
-                              </td>
-
-                              {/* Role */}
-                              <td className="py-3.5 pr-4">
-                                <span
-                                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${
-                                    cust.role === "admin"
-                                      ? "bg-purple-100 text-purple-700 border border-purple-200"
-                                      : "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                  }`}
-                                >
-                                  {cust.role === "admin" ? "🛡️ Admin" : "🌱 User"}
-                                </span>
-                              </td>
-
-                              {/* Total Orders */}
-                              <td className="py-3.5 text-right">
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
-                                    cust.totalOrders > 0
-                                      ? "bg-[#D8F3DC] text-[#1B4332]"
-                                      : "bg-gray-100 text-gray-500"
-                                  }`}
-                                >
-                                  📦 {cust.totalOrders} {cust.totalOrders === 1 ? "order" : "orders"}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              {/* Sub-Tab B: Newsletter Subscribers */}
+              {customerSubTab === "subscribers" && (
+                <SubscribersTab onCountChange={setSubscribersCount} />
+              )}
             </div>
           )}
 
@@ -2102,7 +2600,7 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center gap-2.5">
                     <span className="text-xl">🔔</span>
                     <h3 className="text-base font-extrabold text-[#1A2E22]">
-                      Notifications Center (বিজ্ঞপ্তি কেন্দ্র)
+                      Notifications Center
                     </h3>
                     {unreadNotifsCount > 0 && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#D8F3DC] text-[#2D6A4F] border border-[#B7E4C7]">
@@ -2139,22 +2637,22 @@ export default function AdminDashboardPage() {
                   { key: "all", label: "All Activity", count: notifications.length },
                   {
                     key: "order",
-                    label: "📦 Orders",
+                    label: "Orders",
                     count: notifications.filter((n) => n.type === "order").length,
                   },
                   {
                     key: "admin_request",
-                    label: "🛡️ Admin Requests",
+                    label: "Admin Requests",
                     count: notifications.filter((n) => n.type === "admin_request").length,
                   },
                   {
                     key: "stock_alert",
-                    label: "⚠️ Stock Alerts",
+                    label: "Stock Alerts",
                     count: notifications.filter((n) => n.type === "stock_alert").length,
                   },
                   {
                     key: "unread",
-                    label: "🔴 Unread Only",
+                    label: "Unread Only",
                     count: unreadNotifsCount,
                   },
                 ].map((tab) => {
@@ -2163,19 +2661,17 @@ export default function AdminDashboardPage() {
                     <button
                       key={tab.key}
                       onClick={() => setNotifFilter(tab.key)}
-                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                        isActive
-                          ? "bg-[#2D6A4F] text-white shadow-sm shadow-[#2D6A4F]/20"
-                          : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${isActive
+                        ? "bg-[#2D6A4F] text-white shadow-sm shadow-[#2D6A4F]/20"
+                        : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
+                        }`}
                     >
                       <span>{tab.label}</span>
                       <span
-                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                          isActive
-                            ? "bg-white/20 text-white"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-100 text-gray-500"
+                          }`}
                       >
                         {tab.count}
                       </span>
@@ -2211,11 +2707,10 @@ export default function AdminDashboardPage() {
                     return (
                       <div
                         key={n._id}
-                        className={`bg-white rounded-2xl p-5 border transition-all ${
-                          !n.isRead
-                            ? "border-emerald-300 bg-emerald-50/10 shadow-sm shadow-emerald-950/5"
-                            : "border-gray-100 hover:border-gray-200 shadow-2xs"
-                        }`}
+                        className={`bg-white rounded-2xl p-5 border transition-all ${!n.isRead
+                          ? "border-emerald-300 bg-emerald-50/10 shadow-sm shadow-emerald-950/5"
+                          : "border-gray-100 hover:border-gray-200 shadow-2xs"
+                          }`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                           <div className="flex items-start gap-3.5 flex-1">
@@ -2389,12 +2884,12 @@ export default function AdminDashboardPage() {
                     style={{ width: 170 }}
                     size="middle"
                     options={[
-                      { value: "all", label: "✨ All Categories" },
-                      { value: "Salary", label: "💼 Salary" },
-                      { value: "Packaging", label: "📦 Packaging" },
-                      { value: "Utilities", label: "💡 Utilities" },
-                      { value: "Nursery Care", label: "🌿 Nursery Care" },
-                      { value: "Other", label: "📝 Other" },
+                      { value: "all", label: "All Categories" },
+                      { value: "Salary", label: "Salary" },
+                      { value: "Packaging", label: "Packaging" },
+                      { value: "Utilities", label: "Utilities" },
+                      { value: "Nursery Care", label: "Nursery Care" },
+                      { value: "Other", label: "Other" },
                     ]}
                   />
                   <span className="text-xs text-gray-400">
@@ -2431,7 +2926,7 @@ export default function AdminDashboardPage() {
                         <th className="py-3 px-4 font-bold">Expense Title & Purpose</th>
                         <th className="py-3 px-4 font-bold">Category</th>
                         <th className="py-3 px-4 font-bold">Date</th>
-                        <th className="py-3 px-4 font-bold">Amount (খরচ)</th>
+                        <th className="py-3 px-4 font-bold">Amount (Expense)</th>
                         <th className="py-3 px-4 font-bold">Recorded By</th>
                         <th className="py-3 px-4 font-bold text-right">Action</th>
                       </tr>
@@ -2440,7 +2935,7 @@ export default function AdminDashboardPage() {
                       {filteredExpenses.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-12 text-center text-gray-400">
-                            <p className="text-xl mb-1">🌿</p>
+                            {/* <p className="text-xl mb-1">🌿</p> */}
                             <p className="font-semibold text-gray-600">No expense records found</p>
                             <p className="text-[11px] text-gray-400">
                               Click &quot;+ Add Expense&quot; above to log your first business expenditure.
@@ -2516,7 +3011,189 @@ export default function AdminDashboardPage() {
           )}
 
           {/* THEME & PAGE BUILDER TAB */}
-          {activeTab === "theme" && <ThemeBuilderTab />}
+          {activeTab === "theme" && <ThemeBuilderTab onNavigateTab={setActiveTab} />}
+
+          {/* GLOBAL SITE SETTINGS & CMS TAB */}
+          {activeTab === "settings" && <SiteSettingsTab />}
+
+          {/* PRODUCT REVIEWS MANAGEMENT TAB */}
+          {activeTab === "reviews" && (
+            <ReviewsTab onReviewsCountChange={setReviewsCount} />
+          )}
+
+          {/* BOTANICAL BLOG & ARTICLES MANAGEMENT TAB */}
+          {activeTab === "blogs" && (
+            <BlogsManagerTab onBlogsCountChange={setBlogsCount} />
+          )}
+
+          {/* CATEGORIES MANAGEMENT TAB */}
+          {activeTab === "categories" && (
+            <div className="space-y-6">
+              {/* Category KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xl shrink-0 font-bold">
+                    <FolderTree className="w-6 h-6 stroke-[2]" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Categories</p>
+                    <h3 className="text-2xl font-black text-[#1A2E22] mt-0.5">{categories.length}</h3>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-700 flex items-center justify-center text-xl shrink-0 font-bold">
+                    <Globe className="w-6 h-6 stroke-[2]" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Botanical Collections</p>
+                    <h3 className="text-2xl font-black text-sky-950 mt-0.5">
+                      {categories.length} Hubs
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center text-xl shrink-0 font-bold">
+                    <Layers className="w-6 h-6 stroke-[2]" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Catalog Sync Status</p>
+                    <h3 className="text-sm font-bold text-emerald-700 mt-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live & Synchronized
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls bar */}
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="relative w-full sm:w-72">
+                  <SearchOutlined className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                  <input
+                    type="text"
+                    placeholder="Search categories by name or slug..."
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+                  />
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    onClick={() => openCategoryModal()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#40916C] shadow-sm transition-all cursor-pointer"
+                  >
+                    <PlusOutlined /> Create New Category
+                  </button>
+                </div>
+              </div>
+
+              {/* Category Table */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-emerald-50/50 text-[#1A2E22] font-extrabold uppercase tracking-wider border-b border-gray-100">
+                        <th className="py-3.5 px-4">Order</th>
+                        <th className="py-3.5 px-4">Category</th>
+                        <th className="py-3.5 px-4">Slug (URL identifier)</th>
+                        <th className="py-3.5 px-4">Description</th>
+                        <th className="py-3.5 px-4">Collection Page</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {loadingCategories ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-400">
+                            <div className="w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            Loading categories...
+                          </td>
+                        </tr>
+                      ) : categories.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-400">
+                            No categories found. Click "+ Create New Category" to add one.
+                          </td>
+                        </tr>
+                      ) : (
+                        categories
+                          .filter((c) => {
+                            if (!categorySearch.trim()) return true;
+                            const q = categorySearch.toLowerCase();
+                            return (
+                              c.name?.toLowerCase().includes(q) ||
+                              c.slug?.toLowerCase().includes(q) ||
+                              c.description?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((cat, idx) => (
+                            <tr key={cat._id || idx} className="hover:bg-emerald-50/20 transition-colors">
+                              <td className="py-3.5 px-4 font-mono font-bold text-gray-400">
+                                #{cat.order ?? idx}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center">
+                                    {cat.image ? (
+                                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <FolderTree className="w-5 h-5 text-gray-400" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-gray-900 text-sm">{cat.name}</h4>
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                      ID: {cat._id?.substring(cat._id.length - 6)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="inline-block px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-mono text-[11px] font-semibold border border-gray-200">
+                                  /{cat.slug}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 max-w-xs text-gray-500 truncate">
+                                {cat.description || "—"}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <Link
+                                  href={`/collections/${cat.slug}`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-[#1E3F20] hover:bg-emerald-100 transition-colors"
+                                >
+                                  <span>View Live</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </Link>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => openCategoryModal(cat)}
+                                    className="p-1.5 rounded-lg text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                    title="Edit Category"
+                                  >
+                                    <EditOutlined />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(cat)}
+                                    className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Delete Category"
+                                  >
+                                    <DeleteOutlined />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </main>
@@ -2558,14 +3235,24 @@ export default function AdminDashboardPage() {
                 onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
               >
-                <option value="plant">🌿 Plant</option>
-                <option value="fertilizer">🌱 Fertilizer</option>
-                <option value="tool">🪴 Tool / Pot</option>
+                {categories.length > 0 ? (
+                  categories.map((c) => (
+                    <option key={c._id || c.slug} value={c.slug || c.name}>
+                      {c.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="plant">Living Plants</option>
+                    <option value="fertilizer">Organic Fertilizers</option>
+                    <option value="tool">Tools & Pots</option>
+                  </>
+                )}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Buying Cost (কেনা দাম ৳)
+                Buying Cost (৳)
               </label>
               <input
                 type="number"
@@ -2578,7 +3265,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Selling Price (বিক্রয় মূল্য ৳) *
+                Selling Price (৳) *
               </label>
               <input
                 type="number"
@@ -2626,18 +3313,122 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Image URL(s) (comma separated for multiple)
-            </label>
+          {/* Enterprise Cloudinary Image Upload & Client-Side Compression */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-700">
+                Product Photography (Cloudinary CDN)
+              </label>
+              <span className="text-[10px] text-gray-400">
+                Auto-compressed to ~200KB via WebWorker
+              </span>
+            </div>
+
+            {/* Hidden File Input & Stylized Dropzone */}
             <input
-              type="text"
-              placeholder="https://images.unsplash.com/..."
-              value={productForm.images}
-              onChange={(e) => setProductForm({ ...productForm, images: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+              type="file"
+              accept="image/*"
+              multiple
+              id="admin-product-image-file"
+              onChange={handleImageFileUpload}
+              disabled={uploadingImage}
+              className="hidden"
             />
+
+            <label
+              htmlFor="admin-product-image-file"
+              className={`w-full border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-all cursor-pointer ${uploadingImage
+                ? "border-[#2D6A4F] bg-emerald-50/50 cursor-not-allowed"
+                : "border-gray-200 hover:border-[#2D6A4F] hover:bg-emerald-50/20 bg-white"
+                }`}
+            >
+              {uploadingImage ? (
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <Loader2 className="w-7 h-7 text-[#2D6A4F] animate-spin" />
+                  <p className="text-xs font-bold text-[#2D6A4F]">
+                    {uploadStatusText || "Compressing & Uploading..."}
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    Optimizing resolution and uploading blob directly to Cloudinary
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 py-1">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center shadow-2xs">
+                    <UploadCloud className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-800">
+                    Click to browse and upload product photo(s)
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    JPG, PNG, WebP • Compressed to &lt;200KB @ max 1080px resolution
+                  </p>
+                </div>
+              )}
+            </label>
+
+            {/* Uploaded Image Previews */}
+            {(() => {
+              const currentUrls = productForm.images
+                ? productForm.images.split(",").map((s) => s.trim()).filter(Boolean)
+                : [];
+              if (currentUrls.length === 0) return null;
+
+              return (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
+                    <ImageIcon className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                    <span>Uploaded Gallery Images ({currentUrls.length}):</span>
+                  </p>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                    {currentUrls.map((url, idx) => (
+                      <div
+                        key={`modal-img-${idx}`}
+                        className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-2xs"
+                      >
+                        <img
+                          src={url}
+                          alt={`Uploaded preview ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          disabled={deletingImageIndex === idx}
+                          onClick={() => handleRemoveProductImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-700 disabled:opacity-75 cursor-pointer"
+                          title="Remove this photo"
+                        >
+                          {deletingImageIndex === idx ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <CloseIcon className="w-3 h-3 stroke-[2.5]" />
+                          )}
+                        </button>
+                        {idx === 0 && (
+                          <span className="absolute bottom-1 left-1 bg-[#2D6A4F] text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-2xs">
+                            Cover
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Fallback Direct URL input (collapsed styling) */}
+            <div className="pt-1">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1">
+                Direct Image URLs (Optional comma-separated manual override)
+              </label>
+              <input
+                type="text"
+                placeholder="https://res.cloudinary.com/... or https://images.unsplash.com/..."
+                value={productForm.images}
+                onChange={(e) => setProductForm({ ...productForm, images: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-[11px] text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+              />
+            </div>
           </div>
 
           {/* Care Instructions */}
@@ -2692,7 +3483,7 @@ export default function AdminDashboardPage() {
       <Modal
         title={
           <div className="text-base font-bold text-[#1A2E22]">
-            💸 Record New Nursery Expense (নতুন খরচ যোগ করুন)
+            💸 Record New Nursery Expense
           </div>
         }
         open={isExpenseModalOpen}
@@ -2703,7 +3494,7 @@ export default function AdminDashboardPage() {
         <form onSubmit={handleSaveExpense} className="space-y-3.5 pt-3">
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">
-              Expense Title / Purpose (খরচের বিবরণ) *
+              Expense Title / Purpose *
             </label>
             <input
               type="text"
@@ -2718,7 +3509,7 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Amount (পরিমাণ ৳) *
+                Amount (৳) *
               </label>
               <input
                 type="number"
@@ -2734,25 +3525,25 @@ export default function AdminDashboardPage() {
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Category (ক্যাটাগরি) *
+                Category *
               </label>
               <select
                 value={expenseForm.category}
                 onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
               >
-                <option value="Salary">💼 Salary (বেতন)</option>
-                <option value="Packaging">📦 Packaging (প্যাকেজিং)</option>
-                <option value="Utilities">💡 Utilities (বিদ্যুৎ / পানি)</option>
-                <option value="Nursery Care">🌿 Nursery Care (মাটি / সার / পরিচর্যা)</option>
-                <option value="Other">📝 Other (অন্যান্য)</option>
+                <option value="Salary">Salary</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Nursery Care">Nursery Care</option>
+                <option value="Other">Other</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">
-              Date (তারিখ)
+              Date
             </label>
             <input
               type="date"
@@ -2764,7 +3555,7 @@ export default function AdminDashboardPage() {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">
-              Additional Notes (মন্তব্য - ঐচ্ছিক)
+              Additional Notes
             </label>
             <textarea
               rows={2}
@@ -2789,6 +3580,169 @@ export default function AdminDashboardPage() {
               className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#40916C] shadow-sm disabled:opacity-50 transition-all cursor-pointer"
             >
               {savingExpense ? "Saving..." : "Record Expense"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          ADD / EDIT CATEGORY MODAL
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Modal
+        title={
+          <div className="text-base font-bold text-[#1A2E22] flex items-center gap-2">
+            <FolderTree className="w-5 h-5 text-[#2D6A4F]" />
+            <span>{editingCategory ? "Edit Category Details" : "Create New Nursery Category"}</span>
+          </div>
+        }
+        open={isCategoryModalOpen}
+        onCancel={() => setIsCategoryModalOpen(false)}
+        footer={null}
+        width={540}
+      >
+        <form onSubmit={handleSaveCategory} className="space-y-4 pt-3">
+          {/* Name & Auto-slug */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Category Name *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Bonsai & Rare Palms"
+                value={categoryForm.name}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const autoSlug = val
+                    .toLowerCase()
+                    .replace(/[^\w\s-]/g, "")
+                    .replace(/[\s_-]+/g, "-")
+                    .replace(/^-+|-+$/g, "");
+                  setCategoryForm((prev) => ({
+                    ...prev,
+                    name: val,
+                    slug: editingCategory ? prev.slug : autoSlug,
+                  }));
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Slug (URL Identifier) *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="bonsai-rare-palms"
+                value={categoryForm.slug}
+                onChange={(e) =>
+                  setCategoryForm((prev) => ({
+                    ...prev,
+                    slug: e.target.value.toLowerCase().replace(/[\s_]+/g, "-"),
+                  }))
+                }
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Description / Botanical Scope
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Brief summary of plants or goods in this collection..."
+              value={categoryForm.description}
+              onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+            />
+          </div>
+
+          {/* Cloudinary Image Upload with Client Compression */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Category Cover Image (Cloudinary Auto-Compressed)
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/40 text-emerald-800 text-xs font-bold hover:bg-emerald-50 transition-colors cursor-pointer shrink-0">
+                {uploadingCatImage ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
+                ) : (
+                  <UploadCloud className="w-4 h-4 text-emerald-700" />
+                )}
+                <span>{uploadingCatImage ? "Compressing & Uploading..." : "Upload Photo"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCategoryUploadImage}
+                  disabled={uploadingCatImage}
+                  className="hidden"
+                />
+              </label>
+              <input
+                type="text"
+                placeholder="Or paste Cloudinary / Unsplash image URL..."
+                value={categoryForm.image}
+                onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })}
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+              />
+            </div>
+
+            {categoryForm.image && (
+              <div className="mt-2.5 flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                <img
+                  src={categoryForm.image}
+                  alt="Category Preview"
+                  className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-700 truncate">Image Preview</p>
+                  <p className="text-[10px] text-gray-400 truncate font-mono">{categoryForm.image}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCategoryForm({ ...categoryForm, image: "" })}
+                  className="p-1 rounded-md text-red-500 hover:bg-red-50 text-xs cursor-pointer"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Display Order */}
+          <div className="pt-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Display Order Priority
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={categoryForm.order}
+              onChange={(e) => setCategoryForm({ ...categoryForm, order: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
+            />
+          </div>
+
+          {/* Form Actions */}
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setIsCategoryModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingCategory || uploadingCatImage}
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#2D6A4F] hover:bg-[#40916C] shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {savingCategory ? "Saving..." : editingCategory ? "Update Category" : "Create Category"}
             </button>
           </div>
         </form>

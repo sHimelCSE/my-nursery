@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // ─────────────────────────────────────────────
 // GET /api/products
 // Supports: ?search=<query> & ?category=<plant|tool|fertilizer>
@@ -17,8 +20,8 @@ export async function GET(request) {
     // Build dynamic filter object
     const filter = {};
 
-    if (category && ["plant", "tool", "fertilizer"].includes(category)) {
-      filter.category = category;
+    if (category && category.toLowerCase() !== "all") {
+      filter.category = { $regex: new RegExp(`^${category.trim()}$`, "i") };
     }
 
     if (search.trim()) {
@@ -29,6 +32,16 @@ export async function GET(request) {
     }
 
     const products = await Product.find(filter).sort({ createdAt: -1 });
+
+    // Self-heal known broken URLs (e.g. legacy 404 Snake Plant image)
+    const BROKEN_URL = "https://images.unsplash.com/photo-1598880940371-c756e015fdef?w=600&q=80";
+    const WORKING_SNAKE_PLANT = "https://images.unsplash.com/photo-1572688484438-313a6e50c333?w=600&q=80";
+    for (const p of products) {
+      if (Array.isArray(p.images) && p.images.includes(BROKEN_URL)) {
+        p.images = p.images.map((img) => (img === BROKEN_URL ? WORKING_SNAKE_PLANT : img));
+        Product.findByIdAndUpdate(p._id, { images: p.images }).catch(() => {});
+      }
+    }
 
     return NextResponse.json(
       { success: true, count: products.length, data: products },

@@ -17,15 +17,21 @@ export async function PUT(request, { params }) {
     await dbConnect();
     const body = await request.json();
 
+    const updateData = {
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.subtitle !== undefined && { subtitle: body.subtitle }),
+      ...(body.content !== undefined && { content: body.content }),
+      ...(body.layout !== undefined && { layout: body.layout }),
+      ...(body.backgroundColor !== undefined && { backgroundColor: body.backgroundColor }),
+      ...(body.textColor !== undefined && { textColor: body.textColor }),
+      ...(body.blocks !== undefined && { blocks: body.blocks }),
+      ...(body.order !== undefined && { order: body.order }),
+      ...(body.isActive !== undefined && { isActive: body.isActive }),
+    };
+
     const updated = await PageSection.findByIdAndUpdate(
       id,
-      {
-        title: body.title,
-        subtitle: body.subtitle,
-        content: body.content,
-        order: body.order,
-        isActive: body.isActive,
-      },
+      updateData,
       { new: true, runValidators: true }
     );
 

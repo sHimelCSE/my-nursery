@@ -55,7 +55,7 @@ const sampleProducts = [
     price: 320,
     category: "plant",
     images: [
-      "https://images.unsplash.com/photo-1598880940371-c756e015fdef?w=600&q=80",
+      "https://images.unsplash.com/photo-1572688484438-313a6e50c333?w=600&q=80",
     ],
     stock_quantity: 50,
     care_instructions:

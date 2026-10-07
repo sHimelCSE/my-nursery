@@ -3,14 +3,19 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  DeleteOutlined, MinusOutlined, PlusOutlined,
-  ShoppingOutlined, CloseOutlined,
-} from "@ant-design/icons";
+  ShoppingBag,
+  X,
+  Plus,
+  Minus,
+  Trash2,
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+} from "lucide-react";
 import useCartStore from "@/lib/cartStore";
 
 const FALLBACK = "https://images.unsplash.com/photo-1463936575829-25148e1db1b8?w=200&q=70";
 
-// ─── Delivery charge helper ────────────────────────────────────────────────────
 function calcDelivery(subtotal, city = "") {
   if (subtotal >= 1000) return 0;
   return city === "Dhaka" ? 60 : 120;
@@ -20,23 +25,24 @@ export default function CartDrawer() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isCartOpen    = useCartStore((s) => s.isCartOpen);
-  const closeCart     = useCartStore((s) => s.closeCart);
+  const isCartOpen = useCartStore((s) => s.isCartOpen);
+  const closeCart = useCartStore((s) => s.closeCart);
 
   // Isolate Admin Portal: Do not render cart drawer on /Manage_Admin routes
   if (pathname && pathname.startsWith("/Manage_Admin")) {
     return null;
   }
-  const items         = useCartStore((s) => s.items);
-  const removeItem    = useCartStore((s) => s.removeItem);
+
+  const items = useCartStore((s) => s.items);
+  const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
-  const clearCart     = useCartStore((s) => s.clearCart);
+  const clearCart = useCartStore((s) => s.clearCart);
   const getTotalPrice = useCartStore((s) => s.getTotalPrice);
 
-  const subtotal      = getTotalPrice();
-  const deliveryCharge = calcDelivery(subtotal, "Dhaka"); // default Dhaka
-  const total         = subtotal + deliveryCharge;
-  const totalQty      = items.reduce((s, i) => s + i.quantity, 0);
+  const subtotal = getTotalPrice();
+  const deliveryCharge = calcDelivery(subtotal, "Dhaka");
+  const total = subtotal + deliveryCharge;
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
 
   const handleCheckout = () => {
     closeCart();
@@ -47,7 +53,7 @@ export default function CartDrawer() {
     <AnimatePresence>
       {isCartOpen && (
         <>
-          {/* ── Backdrop ─────────────────────────────── */}
+          {/* Backdrop */}
           <motion.div
             key="cart-backdrop"
             initial={{ opacity: 0 }}
@@ -55,10 +61,10 @@ export default function CartDrawer() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
             onClick={closeCart}
-            className="fixed inset-0 bg-black/25 backdrop-blur-[3px] z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50"
           />
 
-          {/* ── Drawer panel ─────────────────────────── */}
+          {/* Drawer panel */}
           <motion.aside
             key="cart-drawer"
             initial={{ x: "100%" }}
@@ -66,55 +72,57 @@ export default function CartDrawer() {
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 320, mass: 0.9 }}
             className="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 flex flex-col"
-            aria-label="Shopping Cart"
+            aria-label="Shopping Cart Drawer"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <ShoppingOutlined style={{ fontSize: "18px", color: "#2D6A4F" }} />
-                <h2 className="text-[16px] font-bold text-[#1A2E22]">Shopping Cart</h2>
+                <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] text-[#2D5A27] flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <h2 className="text-[16px] font-bold text-gray-900 font-serif">Your Cart</h2>
                 {totalQty > 0 && (
-                  <span className="bg-[#D8F3DC] text-[#2D6A4F] text-[11px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold px-2 py-0.5 rounded-full">
                     {totalQty} {totalQty === 1 ? "item" : "items"}
                   </span>
                 )}
               </div>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={closeCart}
-                aria-label="Close cart"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
+                aria-label="Close cart drawer"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
               >
-                <CloseOutlined style={{ fontSize: "15px" }} />
-              </motion.button>
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* ── Empty State ──────────────────────────── */}
+            {/* Empty State */}
             {items.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 py-12">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", damping: 15 }}
-                  className="w-24 h-24 rounded-full bg-[#F4F7F4] flex items-center justify-center text-5xl"
+                  className="w-20 h-20 rounded-full bg-[#F1F8E9] text-[#7BAE37] flex items-center justify-center shadow-inner"
                 >
-                  🛒
+                  <ShoppingBag className="w-9 h-9 stroke-[1.6]" />
                 </motion.div>
                 <div className="text-center">
-                  <p className="text-[#1A2E22] font-bold text-lg mb-1.5">Your cart is empty</p>
-                  <p className="text-[#6B7280] text-sm">Add some plants to get started! 🌿</p>
+                  <p className="text-gray-900 font-bold text-lg mb-1">Your cart is empty</p>
+                  <p className="text-gray-500 text-xs max-w-xs">
+                    Explore our botanical collection of rare plants, organic feeds, and planters.
+                  </p>
                 </div>
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
+                <button
                   onClick={closeCart}
-                  className="mt-2 px-6 py-2.5 rounded-xl bg-[#2D6A4F] text-white text-sm font-semibold hover:bg-[#40916C] transition-all"
+                  className="mt-2 px-6 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#7BAE37] text-white text-xs font-semibold tracking-wide transition-all shadow-xs"
                 >
-                  Continue Shopping
-                </motion.button>
+                  Start Shopping
+                </button>
               </div>
             ) : (
               <>
-                {/* ── Items List ─────────────────────────── */}
+                {/* Items List */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
                   <AnimatePresence initial={false}>
                     {items.map((item) => (
@@ -125,10 +133,10 @@ export default function CartDrawer() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 40, height: 0, marginBottom: 0, paddingBottom: 0 }}
                         transition={{ duration: 0.22 }}
-                        className="flex gap-3 bg-[#FBFBFA] rounded-2xl p-3 border border-gray-100/80"
+                        className="flex gap-3 bg-[#FBFBFA] rounded-2xl p-3 border border-gray-100/90"
                       >
                         {/* Thumbnail */}
-                        <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-[#D8F3DC]/30 shrink-0">
+                        <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                           <img
                             src={item.image || FALLBACK}
                             alt={item.title}
@@ -138,93 +146,91 @@ export default function CartDrawer() {
                         </div>
 
                         {/* Info */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-between">
-                          <p className="text-[#1A2E22] font-semibold text-[13px] leading-snug line-clamp-2">
-                            {item.title}
-                          </p>
-                          <div className="flex items-center justify-between mt-1.5">
-                            {/* Price */}
-                            <p className="text-[#2D6A4F] font-extrabold text-[15px]">
-                              ৳{(item.price * item.quantity).toLocaleString()}
-                            </p>
+                        <div className="flex flex-col justify-between flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-semibold text-gray-900 text-xs leading-snug line-clamp-2">
+                              {item.title}
+                            </h3>
+                            <button
+                              onClick={() => removeItem(item._id)}
+                              className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
 
-                            {/* Controls */}
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white">
-                                <button
-                                  onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                                  className="w-7 h-7 flex items-center justify-center text-[#2D6A4F] hover:bg-[#D8F3DC] transition-colors"
-                                  aria-label="Decrease quantity"
-                                >
-                                  <MinusOutlined style={{ fontSize: "10px" }} />
-                                </button>
-                                <span className="w-7 text-center text-[13px] font-bold text-[#1A2E22]">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                                  className="w-7 h-7 flex items-center justify-center text-[#2D6A4F] hover:bg-[#D8F3DC] transition-colors"
-                                  aria-label="Increase quantity"
-                                >
-                                  <PlusOutlined style={{ fontSize: "10px" }} />
-                                </button>
-                              </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs font-bold text-[#2D5A27]">
+                              ৳{(item.price * item.quantity).toLocaleString()}
+                            </span>
+
+                            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
                               <button
-                                onClick={() => removeItem(item._id)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all"
-                                aria-label="Remove item"
+                                onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                                className="w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                                aria-label="Decrease quantity"
                               >
-                                <DeleteOutlined style={{ fontSize: "13px" }} />
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-6 text-center text-xs font-bold text-gray-800">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                                className="w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="w-3 h-3" />
                               </button>
                             </div>
                           </div>
-                          <p className="text-[11px] text-[#9CA3AF] mt-0.5">
-                            ৳{item.price.toLocaleString()} × {item.quantity}
-                          </p>
                         </div>
                       </motion.div>
                     ))}
                   </AnimatePresence>
                 </div>
 
-                {/* ── Order Summary Footer ─────────────────── */}
+                {/* Order Summary Footer */}
                 <div className="shrink-0 border-t border-gray-100 bg-white px-5 py-4">
                   <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-[13px] text-[#6B7280]">
+                    <div className="flex justify-between text-xs text-gray-500">
                       <span>Subtotal ({totalQty} items)</span>
-                      <span className="font-semibold text-[#1A2E22]">৳{subtotal.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">৳{subtotal.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-[13px] text-[#6B7280]">
-                      <span>Delivery (Inside Dhaka)</span>
-                      <span className={`font-semibold ${deliveryCharge === 0 ? "text-[#40916C]" : "text-[#1A2E22]"}`}>
-                        {deliveryCharge === 0 ? "🎉 Free!" : `৳${deliveryCharge}`}
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Delivery (Dhaka City)</span>
+                      <span className={`font-semibold ${deliveryCharge === 0 ? "text-[#7BAE37]" : "text-gray-900"}`}>
+                        {deliveryCharge === 0 ? "Free Shipping" : `৳${deliveryCharge}`}
                       </span>
                     </div>
                     {deliveryCharge > 0 && (
-                      <p className="text-[11px] text-[#9CA3AF] bg-[#FBFBFA] rounded-lg px-3 py-1.5">
-                        💡 Add ৳{(1000 - subtotal).toLocaleString()} more for free delivery · ৳120 for outside Dhaka
+                      <p className="text-[11px] text-gray-500 bg-[#F1F8E9] text-[#2D5A27] rounded-lg px-2.5 py-1 flex items-center gap-1.5 font-medium">
+                        <Sparkles className="w-3 h-3 shrink-0" />
+                        Add ৳{(1000 - subtotal).toLocaleString()} more for Free Delivery
                       </p>
                     )}
-                    <div className="flex justify-between text-[15px] font-extrabold border-t border-gray-100 pt-2.5 mt-1">
-                      <span className="text-[#1A2E22]">Total</span>
-                      <span className="text-[#2D6A4F]">৳{total.toLocaleString()}</span>
+                    <div className="flex justify-between text-sm font-bold border-t border-gray-100 pt-2 text-gray-900">
+                      <span>Total Amount</span>
+                      <span className="text-[#2D5A27] text-base font-extrabold">৳{total.toLocaleString()}</span>
                     </div>
                   </div>
 
                   <motion.button
-                    whileTap={{ scale: 0.97 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handleCheckout}
                     id="proceed-to-checkout"
-                    className="w-full py-3.5 rounded-2xl bg-[#2D6A4F] text-white font-bold text-[15px] hover:bg-[#40916C] shadow-md shadow-green-900/15 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                    className="w-full py-3.5 rounded-xl bg-[#2D5A27] hover:bg-[#7BAE37] text-white font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                   >
-                    Proceed to Checkout →
+                    <span>Proceed to Checkout</span>
+                    <ArrowRight className="w-4 h-4" />
                   </motion.button>
 
                   <button
                     onClick={clearCart}
-                    className="w-full mt-2.5 py-1.5 text-[12px] text-[#9CA3AF] hover:text-red-400 transition-colors"
+                    className="w-full mt-2 py-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors"
                   >
-                    Clear all items
+                    Clear Cart
                   </button>
                 </div>
               </>

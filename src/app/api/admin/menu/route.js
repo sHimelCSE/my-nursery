@@ -2,23 +2,13 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedAdmin } from "@/lib/adminAuth";
 import dbConnect from "@/lib/dbConnect";
 import NavigationMenu from "@/models/NavigationMenu";
+import {
+  DEFAULT_NAVBAR_MENUS,
+  DEFAULT_FOOTER_MENUS,
+  DEFAULT_ALL_MENUS,
+} from "@/constants/defaultNavigation";
 
-const DEFAULT_MENUS = [
-  // Navbar Links
-  { label: "All Products", url: "/#products", location: "navbar", order: 0, isActive: true },
-  { label: "Plants", url: "/?category=plant", location: "navbar", order: 1, isActive: true },
-  { label: "Fertilizers", url: "/?category=fertilizer", location: "navbar", order: 2, isActive: true },
-  { label: "Tools & Pots", url: "/?category=tool", location: "navbar", order: 3, isActive: true },
-  { label: "About Us", url: "/about", location: "navbar", order: 4, isActive: true },
-  { label: "Contact Us", url: "/contact", location: "navbar", order: 5, isActive: true },
-
-  // Footer Links
-  { label: "About Us (আমাদের সম্পর্কে)", url: "/about", location: "footer", order: 0, isActive: true },
-  { label: "Contact Us (যোগাযোগ)", url: "/contact", location: "footer", order: 1, isActive: true },
-  { label: "Privacy Policy (গোপনীয়তা নীতি)", url: "/privacy", location: "footer", order: 2, isActive: true },
-  { label: "Terms & Conditions (শর্তাবলী)", url: "/terms", location: "footer", order: 3, isActive: true },
-  { label: "Return & Refund Policy (ফেরত নীতি)", url: "/refund", location: "footer", order: 4, isActive: true },
-];
+export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
@@ -27,9 +17,21 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const location = searchParams.get("location");
 
-    const count = await NavigationMenu.countDocuments();
-    if (count === 0) {
-      await NavigationMenu.insertMany(DEFAULT_MENUS);
+    const totalCount = await NavigationMenu.countDocuments();
+    const hasMega = await NavigationMenu.findOne({ menuType: "mega_menu" });
+    if (totalCount === 0 || !hasMega) {
+      await NavigationMenu.deleteMany({});
+      await NavigationMenu.insertMany(DEFAULT_ALL_MENUS);
+    } else if (location === "navbar") {
+      const navbarCount = await NavigationMenu.countDocuments({ location: "navbar" });
+      if (navbarCount === 0) {
+        await NavigationMenu.insertMany(DEFAULT_NAVBAR_MENUS);
+      }
+    } else if (location === "footer") {
+      const footerCount = await NavigationMenu.countDocuments({ location: "footer" });
+      if (footerCount === 0) {
+        await NavigationMenu.insertMany(DEFAULT_FOOTER_MENUS);
+      }
     }
 
     const query = {};
@@ -37,11 +39,12 @@ export async function GET(request) {
       query.location = location;
     }
 
+    // Only non-admins are restricted to active items
     if (!admin) {
       query.isActive = true;
     }
 
-    const menus = await NavigationMenu.find(query).sort({ order: 1 });
+    const menus = await NavigationMenu.find(query).sort({ order: 1 }).lean();
     return NextResponse.json({ success: true, menus });
   } catch (error) {
     console.error("GET /api/admin/menu error:", error);
@@ -64,11 +67,20 @@ export async function POST(request) {
 
     await dbConnect();
     const body = await request.json();
-    const { label, url, location } = body;
+    const {
+      label,
+      url,
+      location = "navbar",
+      menuType = "standard",
+      footerColumn = "Shop",
+      items = [],
+      megaMenuPromo,
+      isActive = true,
+    } = body;
 
-    if (!label?.trim() || !url?.trim()) {
+    if (!label?.trim()) {
       return NextResponse.json(
-        { success: false, message: "Label and URL are required" },
+        { success: false, message: "Menu label is required" },
         { status: 400 }
       );
     }
@@ -81,10 +93,21 @@ export async function POST(request) {
 
     const newMenu = await NavigationMenu.create({
       label: label.trim(),
-      url: url.trim(),
+      url: (url || "#").trim(),
       location: loc,
+      menuType: ["standard", "dropdown", "mega_menu"].includes(menuType) ? menuType : "standard",
+      footerColumn: footerColumn?.trim() || "Shop",
       order: nextOrder,
-      isActive: true,
+      isActive: isActive !== false,
+      items: Array.isArray(items) ? items : [],
+      megaMenuPromo: megaMenuPromo || {
+        isEnabled: false,
+        badge: "Featured",
+        title: "",
+        subtitle: "",
+        imageUrl: "",
+        link: "/collections",
+      },
     });
 
     return NextResponse.json(
@@ -112,6 +135,27 @@ export async function PATCH(request) {
 
     await dbConnect();
     const body = await request.json();
+
+    // Reset / Seed defaults action
+    if (body.action === "seed_default") {
+      const loc = body.location;
+      if (loc === "navbar") {
+        await NavigationMenu.deleteMany({ location: "navbar" });
+        await NavigationMenu.insertMany(DEFAULT_NAVBAR_MENUS);
+      } else if (loc === "footer") {
+        await NavigationMenu.deleteMany({ location: "footer" });
+        await NavigationMenu.insertMany(DEFAULT_FOOTER_MENUS);
+      } else {
+        await NavigationMenu.deleteMany({});
+        await NavigationMenu.insertMany(DEFAULT_ALL_MENUS);
+      }
+      const refreshed = await NavigationMenu.find().sort({ order: 1 });
+      return NextResponse.json({
+        success: true,
+        message: "Menu successfully reset to verified botanical defaults",
+        menus: refreshed,
+      });
+    }
 
     // Case 1: Reordering array [{ _id, order }]
     if (Array.isArray(body.menus)) {

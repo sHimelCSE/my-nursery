@@ -5,6 +5,7 @@ import crypto from "crypto";
 import dbConnect from "@/lib/dbConnect";
 import Order from "@/models/Order";
 import User from "@/models/User";
+import Product from "@/models/Product";
 import Notification from "@/models/Notification";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +140,21 @@ export async function POST(request) {
       notes:          notes || "",
       status:         "Pending",
     });
+
+    // ── Automatic Stock Management ──────────────────────
+    for (const item of products) {
+      const pid = item.productId || item._id;
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      if (pid) {
+        try {
+          await Product.findByIdAndUpdate(pid, {
+            $inc: { stock_quantity: -qty },
+          });
+        } catch (stockErr) {
+          console.error("Failed to deduct stock for product:", pid, stockErr);
+        }
+      }
+    }
 
     // ── Create Admin Notification ───────────────────────
     try {
