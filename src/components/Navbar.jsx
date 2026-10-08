@@ -66,6 +66,7 @@ export default function Navbar() {
 
   // Site settings
   const [siteSettings, setSiteSettings] = useState(DEFAULT_SITE_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Load navigation menus
   const loadMenus = () => {
@@ -83,6 +84,18 @@ export default function Navbar() {
     setMounted(true);
     loadMenus();
 
+    // Check localStorage cache first for zero-flicker instant brand rendering
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general) {
+          setSiteSettings(parsed);
+          setSettingsLoaded(true);
+        }
+      }
+    } catch {}
+
     // Dynamic Site Settings Integration
     const loadSettings = () => {
       fetch("/api/site-settings")
@@ -90,6 +103,10 @@ export default function Navbar() {
         .then((data) => {
           if (data.success && data.data) {
             setSiteSettings(data.data);
+            setSettingsLoaded(true);
+            try {
+              localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+            } catch {}
           }
         })
         .catch(() => { });
@@ -365,15 +382,25 @@ export default function Navbar() {
             {/* Dynamic botanical brand logo */}
             <Link
               href="/"
-              className="flex items-center group shrink-0"
-              aria-label={siteSettings.general?.siteName || ""}
+              className="flex items-center group shrink-0 min-w-[140px] h-9 sm:h-16"
+              aria-label={siteSettings.general?.siteName || "Store Home"}
             >
-              <BrandLogo
-                logoType={siteSettings.general?.logoType}
-                logoUrl={siteSettings.general?.logoUrl}
-                siteName={siteSettings.general?.siteName}
-                tagline={siteSettings.general?.tagline}
-              />
+              {!settingsLoaded && !siteSettings.general?.logoUrl && !siteSettings.general?.siteName ? (
+                <div
+                  className="min-w-[140px] h-9 sm:h-16 flex items-center"
+                  aria-hidden="true"
+                >
+                  <div className="w-28 sm:w-36 h-8 sm:h-10 bg-gray-100/60 rounded-lg animate-pulse" />
+                </div>
+              ) : (
+                <BrandLogo
+                  logoType={siteSettings.general?.logoType}
+                  logoUrl={siteSettings.general?.logoUrl}
+                  siteName={siteSettings.general?.siteName}
+                  tagline={siteSettings.general?.tagline}
+                  isLoading={!settingsLoaded && !siteSettings.general?.logoUrl && !siteSettings.general?.siteName}
+                />
+              )}
             </Link>
 
             {/* Desktop Navigation Menu Bar */}
@@ -789,13 +816,25 @@ export default function Navbar() {
               >
                 {/* 1. Drawer Header */}
                 <div className="p-4 px-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-                  <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center">
-                    <BrandLogo
-                      logoType={siteSettings.general?.logoType}
-                      logoUrl={siteSettings.general?.logoUrl}
-                      siteName={siteSettings.general?.siteName}
-                      tagline={siteSettings.general?.tagline}
-                    />
+                  <Link
+                    href="/"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center min-w-[140px] h-9"
+                    aria-label={siteSettings.general?.siteName || "Store Home"}
+                  >
+                    {!settingsLoaded && !siteSettings.general?.logoUrl && !siteSettings.general?.siteName ? (
+                      <div className="min-w-[140px] h-9 flex items-center" aria-hidden="true">
+                        <div className="w-28 h-7 bg-gray-100/60 rounded-lg animate-pulse" />
+                      </div>
+                    ) : (
+                      <BrandLogo
+                        logoType={siteSettings.general?.logoType}
+                        logoUrl={siteSettings.general?.logoUrl}
+                        siteName={siteSettings.general?.siteName}
+                        tagline={siteSettings.general?.tagline}
+                        isLoading={!settingsLoaded && !siteSettings.general?.logoUrl && !siteSettings.general?.siteName}
+                      />
+                    )}
                   </Link>
                   <button
                     type="button"
@@ -958,7 +997,7 @@ export default function Navbar() {
                     </Link>
 
                     <a
-                      href={`https://wa.me/${(siteSettings.whatsapp?.whatsappNumber || "8801712345678").replace(/[^\d]/g, "")}?text=${encodeURIComponent(siteSettings.whatsapp?.defaultMessage || "Hello GreenLeaf, I need plant care help.")}`}
+                      href={`https://wa.me/${(siteSettings.whatsapp?.whatsappNumber || "8801712345678").replace(/[^\d]/g, "")}?text=${encodeURIComponent(siteSettings.whatsapp?.defaultMessage || "Hello, I need plant care help.")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-200/80 text-emerald-800 hover:bg-emerald-50 hover:border-emerald-300 transition-colors shadow-2xs"

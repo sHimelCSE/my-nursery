@@ -87,7 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[#F7F8F4]">
+      <body className="min-h-full flex flex-col bg-[#F7F8F4]" suppressHydrationWarning>
         {/* AntdProvider enables App.useApp() (message/notification) globally */}
         <AntdProvider>
           <Navbar />

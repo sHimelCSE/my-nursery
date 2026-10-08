@@ -91,6 +91,13 @@ const FALLBACK_DEAL_PRODUCTS = [
   },
 ];
 
+/**
+ * @param {{
+ *   data?: any;
+ *   fallbackProducts?: any[];
+ *   onOpenQuickView?: (product: any) => void;
+ * }} props
+ */
 export default function BotanicalDealsSection({
   data,
   fallbackProducts = [],

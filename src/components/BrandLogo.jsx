@@ -10,11 +10,24 @@ export default function BrandLogo({
   tagline = "",
   isFooter = false,
   className = "",
+  isLoading = false,
 }) {
   const currentLogoType = logoType || "logo_only";
-  const name = siteName;
-  const sub = tagline;
-  const hasImage = Boolean(logoUrl && logoUrl.trim());
+  const name = siteName ? String(siteName).trim() : "";
+  const sub = tagline ? String(tagline).trim() : "";
+  const hasImage = Boolean(logoUrl && String(logoUrl).trim());
+
+  // 0. Loading or uninitialized state: subtle zero-CLS skeleton placeholder
+  if (isLoading || (!hasImage && !name)) {
+    return (
+      <div
+        className={`inline-flex items-center min-w-[140px] h-9 sm:h-16 ${className}`}
+        aria-hidden="true"
+      >
+        <div className="w-28 sm:w-36 h-8 sm:h-10 bg-gray-100/60 rounded-lg animate-pulse" />
+      </div>
+    );
+  }
 
   // 1. Logo Only Mode
   if (currentLogoType === "logo_only") {
@@ -23,7 +36,7 @@ export default function BrandLogo({
         <div className={`inline-flex items-center ${className}`}>
           <Image
             src={logoUrl}
-            alt={name}
+            alt={name || "Store Logo"}
             width={160}
             height={48}
             priority={!isFooter}
@@ -32,7 +45,17 @@ export default function BrandLogo({
         </div>
       );
     }
-    // Graceful fallback to Text Only if no logoUrl is uploaded
+    // If user chose logo_only but hasn't uploaded an image, render clean placeholder if no name
+    if (!name) {
+      return (
+        <div
+          className={`inline-flex items-center min-w-[140px] h-9 sm:h-16 ${className}`}
+          aria-hidden="true"
+        >
+          <div className="w-28 sm:w-36 h-8 sm:h-10 bg-gray-100/60 rounded-lg animate-pulse" />
+        </div>
+      );
+    }
   }
 
   // 2. Logo With Text Mode
@@ -42,14 +65,15 @@ export default function BrandLogo({
         {hasImage ? (
           <Image
             src={logoUrl}
-            alt={name}
+            alt={name || "Store Logo"}
             width={40}
             height={40}
             priority={!isFooter}
-            className={`h-10 w-10 object-contain p-0.5 transition-transform group-hover:scale-105 ${isFooter
-              ? "rounded-full bg-white border border-gray-200"
-              : "rounded-2xl border border-emerald-100/80 bg-white"
-              }`}
+            className={`h-10 w-10 object-contain p-0.5 transition-transform group-hover:scale-105 ${
+              isFooter
+                ? "rounded-full bg-white border border-gray-200"
+                : "rounded-2xl border border-emerald-100/80 bg-white"
+            }`}
           />
         ) : isFooter ? (
           <span className="w-10 h-10 rounded-full bg-[#1E3F20] flex items-center justify-center shrink-0">
@@ -61,27 +85,31 @@ export default function BrandLogo({
           </div>
         )}
 
-        <div className="leading-tight">
-          <span
-            className={`font-bold tracking-tight font-serif block ${isFooter ? "text-xl text-[#1C2B1E]" : "text-2xl text-gray-900"
-              }`}
-          >
-            {name}
-          </span>
-          {sub ? (
+        {name && (
+          <div className="leading-tight">
             <span
-              className={`block tracking-widest uppercase font-semibold text-[#2D5A27] ${isFooter ? "text-[9px]" : "text-[10px]"
-                }`}
+              className={`font-bold tracking-tight font-serif block ${
+                isFooter ? "text-xl text-[#1C2B1E]" : "text-2xl text-gray-900"
+              }`}
             >
-              {sub}
+              {name}
             </span>
-          ) : null}
-        </div>
+            {sub ? (
+              <span
+                className={`block tracking-widest uppercase font-semibold text-[#2D5A27] ${
+                  isFooter ? "text-[9px]" : "text-[10px]"
+                }`}
+              >
+                {sub}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
     );
   }
 
-  // 3. Text Only Mode (Clean botanical leaf SVG + styled brand text)
+  // 3. Text Only Mode
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
       {isFooter ? (
@@ -94,22 +122,26 @@ export default function BrandLogo({
         </div>
       )}
 
-      <div className="leading-tight">
-        <span
-          className={`font-bold tracking-tight font-serif block ${isFooter ? "text-xl text-[#1C2B1E]" : "text-2xl text-gray-900"
-            }`}
-        >
-          {name}
-        </span>
-        {sub ? (
+      {name && (
+        <div className="leading-tight">
           <span
-            className={`block tracking-widest uppercase font-semibold text-[#2D5A27] ${isFooter ? "text-[9px]" : "text-[10px]"
-              }`}
+            className={`font-bold tracking-tight font-serif block ${
+              isFooter ? "text-xl text-[#1C2B1E]" : "text-2xl text-gray-900"
+            }`}
           >
-            {sub}
+            {name}
           </span>
-        ) : null}
-      </div>
+          {sub ? (
+            <span
+              className={`block tracking-widest uppercase font-semibold text-[#2D5A27] ${
+                isFooter ? "text-[9px]" : "text-[10px]"
+              }`}
+            >
+              {sub}
+            </span>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

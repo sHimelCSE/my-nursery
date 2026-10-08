@@ -1,8 +1,8 @@
 export const DEFAULT_SITE_SETTINGS = {
   general: {
-    siteName: "GreenLeaf",
-    tagline: "BOTANICAL STUDIO",
-    logoType: "logo_with_text",
+    siteName: "",
+    tagline: "",
+    logoType: "logo_only",
     logoUrl: "",
     contactEmail: "support@greenleafnursery.com",
     hotlinePhone: "+880 1712-345678",

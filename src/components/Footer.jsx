@@ -47,12 +47,25 @@ export default function Footer() {
   useEffect(() => {
     loadFooterMenus();
 
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general) {
+          setSiteSettings(parsed);
+        }
+      }
+    } catch {}
+
     const loadSettings = () => {
       fetch("/api/site-settings")
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.data) {
             setSiteSettings(data.data);
+            try {
+              localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+            } catch {}
           }
         })
         .catch(() => { });
@@ -120,7 +133,7 @@ export default function Footer() {
               <Link
                 href="/"
                 className="inline-flex items-center group"
-                aria-label={siteSettings.general?.siteName || "GreenLeaf"}
+                aria-label={siteSettings.general?.siteName || "Store Home"}
               >
                 <BrandLogo
                   isFooter

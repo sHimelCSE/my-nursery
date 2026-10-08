@@ -7,14 +7,14 @@ export { DEFAULT_SITE_SETTINGS };
 const SiteSettingSchema = new Schema(
   {
     general: {
-      siteName: { type: String, default: DEFAULT_SITE_SETTINGS.general.siteName },
-      tagline: { type: String, default: DEFAULT_SITE_SETTINGS.general.tagline },
+      siteName: { type: String, default: "" },
+      tagline: { type: String, default: "" },
       logoType: {
         type: String,
         enum: ["logo_only", "logo_with_text", "text_only"],
-        default: DEFAULT_SITE_SETTINGS.general.logoType,
+        default: "logo_only",
       },
-      logoUrl: { type: String, default: DEFAULT_SITE_SETTINGS.general.logoUrl },
+      logoUrl: { type: String, default: "" },
       contactEmail: { type: String, default: DEFAULT_SITE_SETTINGS.general.contactEmail },
       hotlinePhone: { type: String, default: DEFAULT_SITE_SETTINGS.general.hotlinePhone },
       storeAddress: { type: String, default: DEFAULT_SITE_SETTINGS.general.storeAddress },
