@@ -123,7 +123,29 @@ export default function ProductDetailClient({ params, id: directId }) {
   const [reviewRating, setReviewRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
-  const [guestName, setGuestName] = useState("");
+  const [brandName, setBrandName] = useState("MSH BloomCraft");
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general?.siteName) setBrandName(parsed.general.siteName);
+      }
+    } catch {}
+
+    const handleUpdate = () => {
+      try {
+        const cached = localStorage.getItem("app_site_settings");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.general?.siteName) setBrandName(parsed.general.siteName);
+        }
+      } catch {}
+    };
+    window.addEventListener("siteSettingsUpdated", handleUpdate);
+    return () => window.removeEventListener("siteSettingsUpdated", handleUpdate);
+  }, []);
 
   const isWishlisted = mounted && product ? isInWishlist(product._id) : false;
 
@@ -527,7 +549,7 @@ export default function ProductDetailClient({ params, id: directId }) {
             <div className="grid grid-cols-3 gap-2 py-2 px-1 text-xs border-y border-gray-100 text-gray-600">
               <div>
                 <span className="text-gray-400 block text-[10px] uppercase font-semibold">Vendor</span>
-                <span className="font-bold text-gray-900">GreenLeaf Botanicals</span>
+                <span className="font-bold text-gray-900">{brandName}</span>
               </div>
               <div>
                 <span className="text-gray-400 block text-[10px] uppercase font-semibold">SKU</span>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { App } from "antd";
+import { Sprout } from "lucide-react";
 import {
   MailOutlined, LockOutlined, LoadingOutlined, ArrowLeftOutlined,
   EyeOutlined, EyeInvisibleOutlined,
@@ -40,6 +41,18 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const { message } = App.useApp();
 
+  const [brandName, setBrandName] = useState("MSH BloomCraft");
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general?.siteName) setBrandName(parsed.general.siteName);
+      }
+    } catch {}
+  }, []);
+
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,7 +81,7 @@ function LoginForm() {
         setError(res.error);
         message.error(res.error);
       } else {
-        message.success("Welcome back to GreenLeaf Nursery! 🌿");
+        message.success(`Welcome back to ${brandName}!`);
         router.push(callbackUrl);
         router.refresh();
       }
@@ -92,7 +105,7 @@ function LoginForm() {
           href="/"
           className="inline-flex items-center gap-2 text-sm font-medium text-[#4B5563] hover:text-[#2D6A4F] transition-colors"
         >
-          <ArrowLeftOutlined /> Back to GreenLeaf Nursery
+          <ArrowLeftOutlined /> Back to {brandName}
         </Link>
       </div>
 
@@ -105,8 +118,8 @@ function LoginForm() {
         >
           {/* Brand header */}
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-3xl mx-auto mb-3 shadow-md shadow-green-900/15 text-white">
-              🌿
+            <div className="w-14 h-14 rounded-2xl bg-[#2D6A4F] flex items-center justify-center mx-auto mb-3 shadow-md shadow-green-900/15 text-white">
+              <Sprout className="w-7 h-7" />
             </div>
             <h1 className="text-2xl font-black text-[#1A2E22] tracking-tight">
               Welcome Back
@@ -122,7 +135,7 @@ function LoginForm() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold"
             >
-              ⚠️ {error}
+              {error}
             </motion.div>
           )}
 

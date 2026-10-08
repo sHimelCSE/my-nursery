@@ -184,14 +184,14 @@ export default function AdminRegisterPage() {
                   Admin Registration
                 </h1>
                 <p className="text-xs text-gray-500 mt-1">
-                  Create a new administrator account for GreenLeaf Nursery
+                  Create a new administrator account for the store
                 </p>
               </div>
 
               {/* Self-bootstrapping alert banner */}
               <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-xs text-emerald-900 space-y-1">
                 <p className="font-bold flex items-center gap-1.5 text-emerald-800">
-                  👑 Self-Bootstrapping Hierarchy:
+                  Self-Bootstrapping Hierarchy:
                 </p>
                 <p className="text-[11px] leading-relaxed text-emerald-700">
                   The very first account created is automatically granted{" "}
@@ -206,7 +206,7 @@ export default function AdminRegisterPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium"
                 >
-                  ⚠️ {error}
+                  {error}
                 </motion.div>
               )}
 
@@ -239,7 +239,7 @@ export default function AdminRegisterPage() {
                     <input
                       type="email"
                       required
-                      placeholder="admin@greenleaf.com"
+                      placeholder="admin@store.com"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] focus:bg-white transition-all"

@@ -3,40 +3,141 @@
 import { useState, useEffect } from "react";
 import {
   ShieldCheck,
-  CheckCircle2,
   Phone,
-  MessageSquare,
+  MessageCircle,
   Sprout,
-  DollarSign,
-  Package,
 } from "lucide-react";
+import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
 import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 export default function RefundPolicyPage() {
-  const [content, setContent] = useState(DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy);
-  const [whatsapp, setWhatsapp] = useState(DEFAULT_SITE_SETTINGS.whatsapp);
-  const [general, setGeneral] = useState(DEFAULT_SITE_SETTINGS.general);
+  const [pageConfig, setPageConfig] = useState(DEFAULT_PAGE_THEME_CONFIG);
+  const [siteSettings, setSiteSettings] = useState(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
-    fetch("/api/site-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          if (data.data.pagesContent?.refundPolicy) {
-            setContent(data.data.pagesContent.refundPolicy);
+    // 1. Local caching
+    try {
+      const cachedPage = localStorage.getItem("app_page_theme_config");
+      if (cachedPage) {
+        const parsed = JSON.parse(cachedPage);
+        setPageConfig((prev) => ({
+          ...prev,
+          ...parsed,
+          policyPages: {
+            ...prev.policyPages,
+            ...(parsed.policyPages || {}),
+            refund: {
+              ...(prev.policyPages?.refund || {}),
+              ...(parsed.policyPages?.refund || {}),
+            },
+          },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const cachedSite = localStorage.getItem("app_site_settings");
+      if (cachedSite) {
+        const parsed = JSON.parse(cachedSite);
+        setSiteSettings((prev) => ({
+          ...prev,
+          ...parsed,
+          general: { ...prev.general, ...(parsed.general || {}) },
+          whatsapp: { ...prev.whatsapp, ...(parsed.whatsapp || {}) },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Fetch fresh page theme config
+    const loadPageConfig = () => {
+      fetch("/api/page-theme-config")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            setPageConfig((prev) => ({
+              ...prev,
+              ...data.data,
+              policyPages: {
+                ...prev.policyPages,
+                ...(data.data.policyPages || {}),
+                refund: {
+                  ...(prev.policyPages?.refund || {}),
+                  ...(data.data.policyPages?.refund || {}),
+                },
+              },
+            }));
+            try {
+              localStorage.setItem("app_page_theme_config", JSON.stringify(data.data));
+            } catch {
+              // ignore
+            }
           }
-          if (data.data.whatsapp) {
-            setWhatsapp(data.data.whatsapp);
+        })
+        .catch((err) => console.error("Failed to load refund page config:", err));
+    };
+
+    // 3. Fetch fresh site settings for WhatsApp & Hotline
+    const loadSiteSettings = () => {
+      fetch("/api/site-settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            setSiteSettings((prev) => ({
+              ...prev,
+              ...data.data,
+              general: { ...prev.general, ...(data.data.general || {}) },
+              whatsapp: { ...prev.whatsapp, ...(data.data.whatsapp || {}) },
+            }));
+            try {
+              localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+            } catch {
+              // ignore
+            }
           }
-          if (data.data.general) {
-            setGeneral(data.data.general);
-          }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch((err) => console.error("Failed to load site settings:", err));
+    };
+
+    loadPageConfig();
+    loadSiteSettings();
+
+    const handlePageUpdate = () => loadPageConfig();
+    const handleSiteUpdate = () => loadSiteSettings();
+    window.addEventListener("pageThemeConfigUpdated", handlePageUpdate);
+    window.addEventListener("siteSettingsUpdated", handleSiteUpdate);
+
+    return () => {
+      window.removeEventListener("pageThemeConfigUpdated", handlePageUpdate);
+      window.removeEventListener("siteSettingsUpdated", handleSiteUpdate);
+    };
   }, []);
 
-  const whatsappNum = (whatsapp.whatsappNumber || "8801712345678").replace(/[^\d]/g, "");
+  const refund = pageConfig.policyPages?.refund || DEFAULT_PAGE_THEME_CONFIG.policyPages.refund;
+  const general = siteSettings.general || DEFAULT_SITE_SETTINGS.general;
+  const whatsapp = siteSettings.whatsapp || DEFAULT_SITE_SETTINGS.whatsapp;
+
+  const brandName = general.siteName || "MSH BloomCraft";
+  const badgeText = refund.badge || "100% Risk-Free Botanical Guarantee";
+  const pageTitle = refund.title || "48-Hour Live Plant Replacement & Refund Guarantee";
+  const lastUpdated = refund.lastUpdated || "Recently Updated";
+  const guaranteeTitle = refund.guaranteeTitle || "48-Hour Live Plant Replacement Guarantee";
+  const guaranteeText = refund.guaranteeText || "We take immense pride in our protective packaging. If your plant arrives broken, dead, or severely damaged during courier handling, we will send you a brand new plant completely free or provide a full refund.";
+  const steps = Array.isArray(refund.steps) && refund.steps.length > 0 ? refund.steps : DEFAULT_PAGE_THEME_CONFIG.policyPages.refund.steps;
+  const hotlinePhone = general.hotlinePhone || "+880 1712-345678";
+
+  const waRaw = whatsapp.whatsappNumber || general.hotlinePhone || "";
+  const waClean = waRaw.replace(/[^\d]/g, "");
+  const waHref = waClean
+    ? `https://wa.me/${waClean}?text=${encodeURIComponent(`Hello ${brandName}, I need assistance with a damaged plant claim.`)}`
+    : "#";
+
+  const cleanHtml = (refund.contentHtml || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\u00a0/g, " ");
 
   return (
     <div className="min-h-screen bg-[#FAFBF9] text-slate-800 py-14 px-4 sm:px-6 lg:px-8">
@@ -45,13 +146,13 @@ export default function RefundPolicyPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
             <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
-            <span>100% Risk-Free Botanical Guarantee</span>
+            <span>{badgeText}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold font-serif text-slate-900 tracking-tight">
-            {content.title || "48-Hour Live Plant Replacement & Refund Guarantee"}
+            {pageTitle}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Last Updated: {content.lastUpdated || "October 2026"} · GreenLeaf Nursery Bangladesh
+            Last Updated: {lastUpdated} · {brandName}
           </p>
         </div>
 
@@ -63,27 +164,27 @@ export default function RefundPolicyPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 font-serif">
-                48-Hour Live Plant Replacement Guarantee
+                {guaranteeTitle}
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
-                We take immense pride in our protective packaging. If your plant arrives broken, dead, or severely damaged during courier handling, <strong className="text-[#2D6A4F] underline">we will send you a brand new plant completely free</strong> or provide a full refund.
+                {guaranteeText}
               </p>
             </div>
           </div>
         </div>
 
         {/* Content Box */}
-        <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-sm p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
+        <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
           {/* Dynamic Policy Paragraphs */}
           <section className="leading-relaxed">
-            {content.contentHtml ? (
+            {cleanHtml ? (
               <div
-                className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose"
-                dangerouslySetInnerHTML={{ __html: content.contentHtml }}
+                className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose break-words"
+                dangerouslySetInnerHTML={{ __html: cleanHtml }}
               />
             ) : (
-              <div className="space-y-4 whitespace-pre-line leading-relaxed">
-                {content.contentText}
+              <div className="space-y-4 whitespace-pre-line leading-relaxed break-words text-slate-500 italic">
+                Refund policy terms are currently being updated.
               </div>
             )}
           </section>
@@ -92,32 +193,28 @@ export default function RefundPolicyPage() {
           <div className="pt-4 border-t border-gray-100 space-y-4">
             <h3 className="text-sm font-bold text-slate-900">How to Claim Within 48 Hours</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-100 space-y-1">
-                <span className="font-bold text-[#2D6A4F] block">Step 1: Take Photos</span>
-                <p className="text-slate-500">Snap 2 clear photos of the damaged foliage and carton label upon unboxing.</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-100 space-y-1">
-                <span className="font-bold text-[#2D6A4F] block">Step 2: Message Us</span>
-                <p className="text-slate-500">Send photos via WhatsApp with your Order ID or phone number.</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-100 space-y-1">
-                <span className="font-bold text-[#2D6A4F] block">Step 3: Instant Dispatch</span>
-                <p className="text-slate-500">Our botanists review within 2 hours and dispatch your replacement.</p>
-              </div>
+              {steps.map((stepItem, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-100 space-y-1">
+                  <span className="font-bold text-[#2D6A4F] block">
+                    {stepItem.step ? `${stepItem.step}: ` : `Step ${idx + 1}: `}{stepItem.title}
+                  </span>
+                  <p className="text-slate-500 leading-relaxed">{stepItem.desc}</p>
+                </div>
+              ))}
             </div>
 
             <div className="pt-2 flex flex-wrap gap-3">
               <a
-                href={`https://wa.me/${whatsappNum}?text=Hello%2C%20I%20need%20assistance%20with%20a%20damaged%20plant%20claim`}
+                href={waHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-colors"
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4" />
                 <span>Submit Claim on WhatsApp</span>
               </a>
               <a
-                href={`tel:${(general.hotlinePhone || "+8801712345678").replace(/\s+/g, "")}`}
+                href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
                 className="px-6 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-300 text-slate-700 text-xs font-bold inline-flex items-center gap-2 transition-colors"
               >
                 <Phone className="w-4 h-4 text-[#2D6A4F]" />

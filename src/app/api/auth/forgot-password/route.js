@@ -47,7 +47,7 @@ export async function POST(request) {
     const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
     console.log(
-      `\n========================================\n🌱 [GREENLEAF PASSWORD RESET LINK for ${cleanEmail}]:\n${resetUrl}\n========================================\n`
+      `\n========================================\n[PASSWORD RESET LINK for ${cleanEmail}]:\n${resetUrl}\n========================================\n`
     );
 
     return NextResponse.json(

@@ -72,6 +72,7 @@ export async function PUT(request) {
         privacyPolicy: { ...existingPages.privacyPolicy, ...(body.pagesContent.privacyPolicy || {}) },
         termsOfService: { ...existingPages.termsOfService, ...(body.pagesContent.termsOfService || {}) },
         refundPolicy: { ...existingPages.refundPolicy, ...(body.pagesContent.refundPolicy || {}) },
+        contactPage: { ...existingPages.contactPage, ...(body.pagesContent.contactPage || {}) },
       };
     }
 

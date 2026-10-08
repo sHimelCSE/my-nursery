@@ -118,55 +118,55 @@ export default function BotanicalCategorySection({
       </div>
 
       {/* ─── Dynamic Category Cards ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-5">
         {loading && categories.length === 0
           ? Array.from({ length: 5 }).map((_, idx) => (
-              <div
-                key={`skeleton-${idx}`}
-                className="bg-[#F2F5ED] rounded-3xl p-3 text-center border border-transparent animate-pulse"
-              >
-                <div className="aspect-square w-full rounded-2xl bg-[#E2E8DC]" />
-                <div className="h-4 w-20 bg-[#E2E8DC] rounded-md mx-auto mt-3" />
-                <div className="h-3 w-14 bg-[#E2E8DC] rounded-md mx-auto mt-1.5" />
-              </div>
-            ))
+            <div
+              key={`skeleton-${idx}`}
+              className="bg-[#F2F5ED] rounded-3xl p-3 text-center border border-transparent animate-pulse"
+            >
+              <div className="aspect-square w-full rounded-2xl bg-[#E2E8DC]" />
+              <div className="h-4 w-20 bg-[#E2E8DC] rounded-md mx-auto mt-3" />
+              <div className="h-3 w-14 bg-[#E2E8DC] rounded-md mx-auto mt-1.5" />
+            </div>
+          ))
           : categories.map((cat, idx) => {
-              const productCount =
-                typeof cat.productCount === "number" ? cat.productCount : 0;
-              const countText = `${productCount}+ Plants`;
-              const catSlug =
-                cat.slug ||
-                cat.name?.toLowerCase().replace(/\s+/g, "-") ||
-                "plant";
-              const catImage = cat.image || FALLBACK_IMAGE;
+            const productCount =
+              typeof cat.productCount === "number" ? cat.productCount : 0;
+            const countText = `${productCount}+ Plants`;
+            const catSlug =
+              cat.slug ||
+              cat.name?.toLowerCase().replace(/\s+/g, "-") ||
+              "plant";
+            const catImage = cat.image || FALLBACK_IMAGE;
 
-              return (
-                <Link
-                  key={cat._id || cat.id || catSlug || idx}
-                  href={`/collections/${catSlug}`}
-                  className="category-card group bg-[#F2F5ED] rounded-3xl p-3 text-center border border-transparent hover:border-[#1E3F20]/15 hover:shadow-[0_16px_32px_-16px_rgba(28,43,30,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-between cursor-pointer"
-                >
-                  <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white/70 p-2">
-                    <SafeImage
-                      src={catImage}
-                      fallback={FALLBACK_IMAGE}
-                      alt={cat.name}
-                      fill
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                      className="object-contain p-2 group-hover:scale-108 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="mt-3 w-full">
-                    <h3 className="text-sm font-bold text-[#1C2B1E] group-hover:text-[#2D6A4F] transition-colors truncate">
-                      {cat.name}
-                    </h3>
-                    <p className="text-xs text-[#5A6B5C] font-medium mt-0.5">
-                      {countText}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+            return (
+              <Link
+                key={cat._id || cat.id || catSlug || idx}
+                href={`/collections/${catSlug}`}
+                className="category-card group bg-[#F2F5ED] rounded-3xl p-3 text-center border border-[#1E3F20]/15 hover:border-[#1E3F20]/15 hover:shadow-[0_16px_32px_-16px_rgba(28,43,30,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-between cursor-pointer"
+              >
+                <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white/70 p-2">
+                  <SafeImage
+                    src={catImage}
+                    fallback={FALLBACK_IMAGE}
+                    alt={cat.name}
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    className="object-cover rounded-2xl group-hover:scale-108 transition-transform duration-500"
+                  />
+                </div>
+                <div className="mt-3 w-full">
+                  <h3 className="text-sm font-bold text-[#1C2B1E] group-hover:text-[#2D6A4F] transition-colors truncate">
+                    {cat.name}
+                  </h3>
+                  <p className="text-xs text-[#5A6B5C] font-medium mt-0.5">
+                    {countText}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
       </div>
 
       {/* ─── Dynamic Perks Bar (Bottom Row) ────────────────────────────── */}

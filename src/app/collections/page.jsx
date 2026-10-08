@@ -5,14 +5,24 @@ import dbConnect from "@/lib/dbConnect";
 import Category from "@/models/Category";
 import Product from "@/models/Product";
 
+import SiteSetting from "@/models/SiteSetting";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export const metadata = {
-  title: "Botanical Collections | GreenLeaf Nursery",
-  description:
-    "Explore our curated plant varieties, specialized potting soils, and handcrafted planters organized for every green space.",
-};
+export async function generateMetadata() {
+  await dbConnect();
+  let siteName = "MSH BloomCraft";
+  try {
+    const settings = await SiteSetting.getSettings();
+    if (settings?.general?.siteName) siteName = settings.general.siteName;
+  } catch (err) {}
+  return {
+    title: "Botanical Collections",
+    description:
+      "Explore our curated plant varieties, specialized potting soils, and handcrafted planters organized for every green space.",
+  };
+}
 
 const DEFAULT_COLLECTION_IMAGE =
   "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=80";

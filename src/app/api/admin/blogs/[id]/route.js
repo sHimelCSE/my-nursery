@@ -53,7 +53,7 @@ export async function PUT(request, { params }) {
 
     if (body.author) {
       updateData.author = {
-        name: body.author.name?.trim() || blog.author?.name || "GreenLeaf Botanist",
+        name: body.author.name?.trim() || blog.author?.name || "BloomCraft Botanist",
         role: body.author.role?.trim() || blog.author?.role || "Horticulture Specialist",
         avatar: body.author.avatar?.trim() || blog.author?.avatar || "",
       };

@@ -25,7 +25,7 @@ export const DEFAULT_BLOGS = [
       <h3>3. Soil Mix and Nutritive Medium</h3>
       <p>Monsteras require high drainage. A balanced potting blend consists of 40% organic vermicompost, 30% coco peat, 20% perlite or pumice, and 10% pine bark or neem cake. This structure retains vital moisture while delivering ample aeration to roots.</p>
       
-      <blockquote>Pro-Tip from GreenLeaf Nursery: Wipe Monstera leaves every fortnight with a damp microfiber cloth to remove dust and maximize chlorophyll photosynthesis.</blockquote>
+      <blockquote>Pro-Tip from our nursery botanists: Wipe Monstera leaves every fortnight with a damp microfiber cloth to remove dust and maximize chlorophyll photosynthesis.</blockquote>
     `,
   },
   {

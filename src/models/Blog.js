@@ -4,7 +4,7 @@ const BlogAuthorSchema = new Schema(
   {
     name: {
       type: String,
-      default: "GreenLeaf Botanist",
+      default: "BloomCraft Botanist",
       trim: true,
     },
     role: {
@@ -57,7 +57,7 @@ const BlogSchema = new Schema(
     author: {
       type: BlogAuthorSchema,
       default: () => ({
-        name: "GreenLeaf Botanist",
+        name: "BloomCraft Botanist",
         role: "Horticulture Specialist",
         avatar: "",
       }),

@@ -86,13 +86,13 @@ export default function Footer() {
     return null;
   }
 
-  const phone = siteSettings.general?.hotlinePhone || "+880 1712-345678";
-  const email = siteSettings.general?.contactEmail || "support@greenleafnursery.com";
+  const phone = siteSettings.general?.hotlinePhone || DEFAULT_SITE_SETTINGS.general.hotlinePhone;
+  const email = siteSettings.general?.contactEmail || DEFAULT_SITE_SETTINGS.general.contactEmail;
   const social = [
-    { label: "Facebook", href: siteSettings.socialLinks?.facebook || "https://facebook.com", Icon: FacebookIcon },
-    { label: "Twitter", href: siteSettings.socialLinks?.twitter || "https://twitter.com", Icon: TwitterIcon },
-    { label: "Instagram", href: siteSettings.socialLinks?.instagram || "https://instagram.com", Icon: InstagramIcon },
-    { label: "YouTube", href: siteSettings.socialLinks?.youtube || "https://youtube.com", Icon: YoutubeIcon },
+    { label: "Facebook", href: siteSettings.socialLinks?.facebook || DEFAULT_SITE_SETTINGS.socialLinks.facebook, Icon: FacebookIcon },
+    { label: "Twitter", href: siteSettings.socialLinks?.twitter || DEFAULT_SITE_SETTINGS.socialLinks.twitter, Icon: TwitterIcon },
+    { label: "Instagram", href: siteSettings.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.socialLinks.instagram, Icon: InstagramIcon },
+    { label: "YouTube", href: siteSettings.socialLinks?.youtube || DEFAULT_SITE_SETTINGS.socialLinks.youtube, Icon: YoutubeIcon },
   ];
 
   // Group dynamic links by `footerColumn`
@@ -192,7 +192,7 @@ export default function Footer() {
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#1E3F20] shrink-0 mt-0.5" />
-                  <span>{siteSettings.general?.storeAddress || "Sector 7, Uttara, Dhaka-1230, Bangladesh"}</span>
+                  <span>{siteSettings.general?.storeAddress || DEFAULT_SITE_SETTINGS.general.storeAddress}</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-[#1E3F20] shrink-0" />
@@ -208,7 +208,7 @@ export default function Footer() {
                 </li>
                 <li className="flex items-center gap-3">
                   <Clock className="w-4 h-4 text-[#1E3F20] shrink-0" />
-                  <span>{siteSettings.general?.businessHours || "Sun – Sat, 9 AM – 9 PM"}</span>
+                  <span>{siteSettings.general?.businessHours || DEFAULT_SITE_SETTINGS.general.businessHours}</span>
                 </li>
               </ul>
             </div>
@@ -221,7 +221,9 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#5A6B5C]">
           <p>
             © {currentYear}{" "}
-            {siteSettings.footer?.copyrightText || "GreenLeaf Botanical Nursery BD. All rights reserved."}
+            {siteSettings.footer?.copyrightText && !siteSettings.footer.copyrightText.includes("GreenLeaf")
+              ? siteSettings.footer.copyrightText
+              : `${siteSettings.general?.siteName || "MSH BloomCraft"}. All rights reserved.`}
           </p>
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-5">
             {Array.isArray(siteSettings.footer?.copyrightLinks) &&

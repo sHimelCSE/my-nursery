@@ -10,38 +10,18 @@ import {
   LockOutlined, KeyOutlined, EyeOutlined, EyeInvisibleOutlined,
 } from "@ant-design/icons";
 import { App } from "antd";
-
-const CONFETTI_EMOJIS = ["🌿", "🌸", "🌱", "🍃", "🌺", "✨", "🎉", "🌻"];
-
-function FloatingEmoji({ emoji, style }) {
-  return (
-    <motion.span
-      initial={{ opacity: 0, y: 0, scale: 0 }}
-      animate={{
-        opacity: [0, 1, 1, 0],
-        y: -130,
-        scale: [0, 1.2, 1, 0.8],
-        x: style.x,
-        rotate: style.rotate,
-      }}
-      transition={{ duration: 2.5, delay: style.delay, ease: "easeOut" }}
-      className="absolute text-2xl pointer-events-none select-none print:hidden"
-      style={{ left: style.left, bottom: "35%" }}
-    >
-      {emoji}
-    </motion.span>
-  );
-}
+import { Sprout, Truck, Phone, Banknote, AlertCircle } from "lucide-react";
+import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 export default function OrderSuccessPage({ params }) {
   // Unwrap async params for Next.js 16
   const { id } = use(params);
   const { message } = App.useApp();
 
+  const [siteSettings, setSiteSettings] = useState(DEFAULT_SITE_SETTINGS);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Auto-created guest account & set password state
@@ -59,12 +39,31 @@ export default function OrderSuccessPage({ params }) {
         setIsNewUser(true);
       }
     }
+
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general) setSiteSettings(parsed);
+      }
+    } catch {}
+
+    fetch("/api/site-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setSiteSettings(data.data);
+          try {
+            localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setShowConfetti(true), 300);
-    return () => clearTimeout(t);
-  }, []);
+  const brandName = siteSettings.general?.siteName || "MSH BloomCraft";
+  const contactEmail = siteSettings.general?.contactEmail || "support@bloomcraftnursery.com";
+  const storeAddress = siteSettings.general?.storeAddress || "Sector 7, Uttara, Dhaka-1230, Bangladesh";
 
   const handleSetPassword = async (e) => {
     e.preventDefault();
@@ -93,7 +92,7 @@ export default function OrderSuccessPage({ params }) {
         throw new Error(data.message || "Failed to set password");
       }
 
-      message.success("Password set successfully! 🌿 Your account is ready.");
+      message.success("Password set successfully! Your account is ready.");
       setPasswordSetSuccess(true);
     } catch (err) {
       setPasswordError(err.message || "Something went wrong. Please try again.");
@@ -147,7 +146,8 @@ export default function OrderSuccessPage({ params }) {
     try {
       const rawId = order?._id || id || "";
       const suffix = rawId.length >= 6 ? rawId.slice(-6).toUpperCase() : rawId ? rawId.toUpperCase() : "ORD";
-      const filename = `GreenLeaf-Invoice-${suffix}.pdf`;
+      const sanitizedBrand = (brandName || "Invoice").replace(/[^a-zA-Z0-9]/g, "-");
+      const filename = `${sanitizedBrand}-Invoice-${suffix}.pdf`;
 
       // Import modern html2canvas-pro and jspdf dynamically to avoid SSR issues
       const [html2canvasModule, jsPdfModule] = await Promise.all([
@@ -179,7 +179,7 @@ export default function OrderSuccessPage({ params }) {
 
       pdf.addImage(imgData, "JPEG", margin, margin, contentWidth, contentHeight);
       pdf.save(filename);
-      message.success("Invoice PDF downloaded successfully! 📄");
+      message.success("Invoice PDF downloaded successfully!");
     } catch (err) {
       console.error("PDF generation error:", err);
       message.info("Opening browser print dialog as fallback...");
@@ -268,10 +268,10 @@ export default function OrderSuccessPage({ params }) {
           </motion.div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A2E22] tracking-tight">
-            Order Placed Successfully! 🌿
+            Order Placed Successfully!
           </h1>
           <p className="text-[#4B5563] text-sm mt-1">
-            Thank you for shopping with GreenLeaf Nursery. Your official money receipt is ready below.
+            Thank you for shopping with {brandName}. Your official money receipt is ready below.
           </p>
         </motion.div>
 
@@ -340,18 +340,18 @@ export default function OrderSuccessPage({ params }) {
             {/* ── Receipt Header: Nursery Brand + Invoice Info ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-2xl shadow-sm text-white">
-                  🌿
+                <div className="w-12 h-12 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shadow-sm">
+                  <Sprout className="w-6 h-6" />
                 </div>
                 <div>
                   <h2 className="text-xl font-extrabold text-[#1A2E22] tracking-tight">
-                    GreenLeaf Nursery
+                    {brandName}
                   </h2>
                   <p className="text-[12px] text-[#6B7280]">
                     Official Money Receipt & Customer Invoice
                   </p>
                   <p className="text-[11px] text-[#9CA3AF]">
-                    House #14, Road #5, Dhanmondi, Dhaka · support@greenleaf.bd
+                    {storeAddress} · {contactEmail}
                   </p>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function OrderSuccessPage({ params }) {
               </div>
             ) : error && !order ? (
               <div className="py-10 text-center">
-                <div className="text-3xl mb-2">⚠️</div>
+                <AlertCircle className="w-9 h-9 text-amber-500 mx-auto mb-2" />
                 <h3 className="text-base font-bold text-[#1A2E22] mb-1">Receipt Notice</h3>
                 <p className="text-sm text-[#6B7280] max-w-sm mx-auto mb-4">
                   {error}
@@ -396,11 +396,11 @@ export default function OrderSuccessPage({ params }) {
                     </span>
                     {order?.paymentMethod === "bkash" ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 border border-pink-200 text-pink-700 text-xs font-semibold">
-                        📱 bKash / Nagad (Pending Verification)
+                        <Phone className="w-3 h-3" /> bKash / Nagad (Pending Verification)
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
-                        💵 Cash on Delivery (Unpaid)
+                        <Banknote className="w-3 h-3" /> Cash on Delivery (Unpaid)
                       </span>
                     )}
                   </div>
@@ -409,8 +409,8 @@ export default function OrderSuccessPage({ params }) {
                     <span className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
                       Delivery Window
                     </span>
-                    <span className="text-[13px] font-semibold text-[#2D6A4F] flex items-center gap-1">
-                      🚚 2–3 Business Days (Express Courier)
+                    <span className="text-[13px] font-semibold text-[#2D6A4F] flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5" /> 2–3 Business Days (Express Courier)
                     </span>
                   </div>
                 </div>
@@ -524,7 +524,7 @@ export default function OrderSuccessPage({ params }) {
                         Delivery Charge ({isDhaka ? "Inside Dhaka ৳60" : "Outside Dhaka ৳120"})
                       </span>
                       <span className="font-medium text-[#1A2E22]">
-                        {order?.deliveryCharge === 0 ? "Free 🎉" : `৳${order?.deliveryCharge}`}
+                        {order?.deliveryCharge === 0 ? "Free" : `৳${order?.deliveryCharge}`}
                       </span>
                     </div>
 
@@ -540,10 +540,10 @@ export default function OrderSuccessPage({ params }) {
                 {/* Footer Note */}
                 <div className="pt-4 border-t border-gray-100 text-center space-y-1">
                   <p className="text-[13px] font-bold text-[#2D6A4F] flex items-center justify-center gap-1.5">
-                    <span>🌱</span> Thank you for shopping green!
+                    <Sprout className="w-4 h-4" /> Thank you for shopping green!
                   </p>
                   <p className="text-[11px] text-[#6B7280]">
-                    We hope your new plants bring joy and freshness to your home. For support or plant care guidance, reach out to us at support@greenleaf.bd.
+                    We hope your new plants bring joy and freshness to your home. For support or plant care guidance, reach out to us at {contactEmail}.
                   </p>
                   <p className="text-[10px] text-[#9CA3AF]">
                     Quote Invoice #{invoiceNumber} for any customer care inquiries.
@@ -592,7 +592,7 @@ export default function OrderSuccessPage({ params }) {
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-[#2D6A4F] text-white flex items-center justify-center text-lg shrink-0 shadow-sm">
-                    🎉
+                    <Sprout className="w-5 h-5 text-emerald-200" />
                   </div>
                   <div>
                     <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#D8F3DC] text-[#2D6A4F] border border-[#B7E4C7] mb-1">
@@ -613,7 +613,7 @@ export default function OrderSuccessPage({ params }) {
 
                 {passwordError && (
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
-                    ⚠️ {passwordError}
+                    {passwordError}
                   </div>
                 )}
 
@@ -662,7 +662,7 @@ export default function OrderSuccessPage({ params }) {
 
         {/* Footer info (hidden on print) */}
         <p className="text-center text-[12px] text-[#9CA3AF] mt-6 print:hidden">
-          🌿 GreenLeaf Nursery — Bringing Nature to Your Living Spaces
+          {brandName} — Bringing Nature to Your Living Spaces
         </p>
 
       </div>

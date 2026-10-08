@@ -317,11 +317,11 @@ export default function Navbar() {
           {/* Right: Hotline, Currency & My Account */}
           <div className="flex items-center gap-4 text-[11px]">
             <a
-              href={`tel:${(siteSettings.general?.hotlinePhone || "+8801712345678").replace(/\s+/g, "")}`}
+              href={`tel:${(siteSettings.general?.hotlinePhone || DEFAULT_SITE_SETTINGS.general.hotlinePhone).replace(/\s+/g, "")}`}
               className="hidden sm:inline-flex items-center gap-1.5 text-emerald-100 hover:text-white transition-colors"
             >
               <Phone className="w-3 h-3 text-[#4E7D3E]" />
-              <span>{siteSettings.general?.hotlinePhone || "+880 1712-345678"}</span>
+              <span>{siteSettings.general?.hotlinePhone || DEFAULT_SITE_SETTINGS.general.hotlinePhone}</span>
             </a>
 
             <span className="text-emerald-300/60 hidden sm:inline">|</span>
@@ -336,7 +336,9 @@ export default function Navbar() {
 
             <span className="text-emerald-300/60 hidden md:inline">|</span>
 
-            <span className="text-emerald-100 font-medium">BDT (৳)</span>
+            <span className="text-emerald-100 font-medium">
+              {siteSettings.general?.currency || "BDT (৳)"}
+            </span>
 
             <span className="text-emerald-300/60">|</span>
 
@@ -997,7 +999,7 @@ export default function Navbar() {
                     </Link>
 
                     <a
-                      href={`https://wa.me/${(siteSettings.whatsapp?.whatsappNumber || "8801712345678").replace(/[^\d]/g, "")}?text=${encodeURIComponent(siteSettings.whatsapp?.defaultMessage || "Hello, I need plant care help.")}`}
+                      href={`https://wa.me/${(siteSettings.whatsapp?.whatsappNumber || DEFAULT_SITE_SETTINGS.whatsapp.whatsappNumber).replace(/[^\d]/g, "")}?text=${encodeURIComponent(siteSettings.whatsapp?.defaultMessage || DEFAULT_SITE_SETTINGS.whatsapp.defaultMessage)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-200/80 text-emerald-800 hover:bg-emerald-50 hover:border-emerald-300 transition-colors shadow-2xs"

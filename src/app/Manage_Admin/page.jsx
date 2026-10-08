@@ -132,25 +132,25 @@ function getNotificationBadge(type) {
   switch (type) {
     case "order":
       return {
-        icon: "📦",
+        icon: <Package className="w-3.5 h-3.5 text-emerald-700" />,
         bg: "bg-emerald-50 border-emerald-200 text-emerald-800",
         label: "Order",
       };
     case "admin_request":
       return {
-        icon: "🛡️",
+        icon: <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />,
         bg: "bg-amber-50 border-amber-200 text-amber-800",
         label: "Admin Request",
       };
     case "stock_alert":
       return {
-        icon: "⚠️",
+        icon: <ShoppingBag className="w-3.5 h-3.5 text-rose-700" />,
         bg: "bg-rose-50 border-rose-200 text-rose-800",
         label: "Stock Alert",
       };
     default:
       return {
-        icon: "🔔",
+        icon: <BellOutlined className="text-xs text-blue-700" />,
         bg: "bg-blue-50 border-blue-200 text-blue-800",
         label: "System",
       };
@@ -1274,7 +1274,7 @@ export default function AdminDashboardPage() {
               },
               {
                 key: "theme",
-                label: "Theme & Menus",
+                label: "Theme & Pages",
                 icon: <LayoutOutlined />,
               },
               {
@@ -1377,7 +1377,7 @@ export default function AdminDashboardPage() {
               {activeTab === "products" && "Product Catalog & Cost Tracking"}
               {activeTab === "blogs" && "Botanical Blog & Plant Care Guides Management"}
               {activeTab === "categories" && "Categories & Storefront Navigation"}
-              {activeTab === "theme" && "Homepage Theme Builder & Navigation Menus"}
+              {activeTab === "theme" && "Theme, Pages & Navigation Builder"}
               {activeTab === "settings" && "Site Settings & Global CMS"}
               {activeTab === "expenses" && "Business Expenses Management"}
               {activeTab === "customers" && (customerSubTab === "registered" ? "Customers & Registered User Directory" : "Newsletter Subscribers & Audience Management")}
@@ -1385,7 +1385,7 @@ export default function AdminDashboardPage() {
               {activeTab === "team" && "Administrator Team & Access Permissions"}
             </h2>
             <p className="text-xs text-[#6B7280]">
-              GreenLeaf Nursery Management System · Live Database Mode
+              Store Administration System · Live Database Mode
             </p>
           </div>
 
@@ -1449,7 +1449,9 @@ export default function AdminDashboardPage() {
                     <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                       {notifications.length === 0 ? (
                         <div className="py-8 text-center text-xs text-gray-400">
-                          <p className="text-xl mb-1">🌿</p>
+                          <div className="w-8 h-8 rounded-full bg-emerald-50 text-[#2D6A4F] flex items-center justify-center mx-auto mb-2">
+                            <Sprout className="w-4 h-4" />
+                          </div>
                           <p className="font-semibold text-gray-600">All caught up!</p>
                           <p className="text-[11px] text-gray-400">No new notifications</p>
                         </div>
@@ -2156,15 +2158,15 @@ export default function AdminDashboardPage() {
             <div className="space-y-6">
               {/* Permission info banner */}
               <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center text-2xl shrink-0 font-bold">
-                  👑
+                <div className="w-12 h-12 rounded-2xl bg-[#D8F3DC] text-[#2D6A4F] flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-[#2D6A4F]" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-[#1A2E22]">
                     Administrator Hierarchy & Access Control
                   </h3>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    GreenLeaf Nursery operates on a secure 2-tier administrative model.{" "}
+                    Our store operates on a secure 2-tier administrative model.{" "}
                     <strong>Super Admins</strong> hold master privileges to review, approve, or revoke
                     other administrators' access. Approved administrators can manage orders and product catalog inventory.
                   </p>

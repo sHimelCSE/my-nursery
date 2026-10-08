@@ -4,6 +4,8 @@ import Category from "@/models/Category";
 import Product from "@/models/Product";
 import CollectionClient from "./CollectionClient";
 
+import SiteSetting from "@/models/SiteSetting";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -11,6 +13,12 @@ export async function generateMetadata({ params }) {
   const { slug } = await params;
   const decodedSlug = decodeURIComponent(slug);
   await dbConnect();
+
+  let siteName = "MSH BloomCraft";
+  try {
+    const settings = await SiteSetting.getSettings();
+    if (settings?.general?.siteName) siteName = settings.general.siteName;
+  } catch (err) {}
 
   const category = await Category.findOne({
     $or: [
@@ -26,7 +34,7 @@ export async function generateMetadata({ params }) {
       .replace(/\b\w/g, (char) => char.toUpperCase());
 
   return {
-    title: `${title} | Botanical Collections | GreenLeaf Nursery`,
+    title: `${title} | Botanical Collections`,
     description:
       category?.description ||
       `Explore our curated selection of ${title} with doorstep delivery in Bangladesh.`,

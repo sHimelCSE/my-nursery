@@ -112,7 +112,7 @@ export async function POST(request) {
       coverImage: coverImage.trim(),
       category: category.trim() || "Plant Care",
       author: {
-        name: author?.name?.trim() || "GreenLeaf Botanist",
+        name: author?.name?.trim() || "BloomCraft Botanist",
         role: author?.role?.trim() || "Horticulture Specialist",
         avatar: author?.avatar?.trim() || "",
       },

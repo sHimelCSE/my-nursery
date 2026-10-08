@@ -125,7 +125,7 @@ export const DEFAULT_FOOTER_MENUS = [
 
   // Column: Company
   {
-    label: "About GreenLeaf",
+    label: "About Us",
     url: "/about",
     location: "footer",
     footerColumn: "Company",

@@ -11,7 +11,7 @@ export function getOrganizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${BASE_URL}/#organization`,
-    name: "GreenLeaf Botanical Studio",
+    name: "MSH BloomCraft",
     url: BASE_URL,
     logo: {
       "@type": "ImageObject",
@@ -21,15 +21,15 @@ export function getOrganizationSchema() {
       "Premium botanical sanctuary providing healthy acclimatized house plants, organic potting mediums, and modern planters across Bangladesh.",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "Mirpur Botanical Garden Area",
+      streetAddress: "Sector 7, Uttara",
       addressLocality: "Dhaka",
-      postalCode: "1216",
+      postalCode: "1230",
       addressCountry: "BD",
     },
     contactPoint: [
       {
         "@type": "ContactPoint",
-        telephone: "+8801700000000",
+        telephone: "+8801712345678",
         contactType: "customer service",
         areaServed: "BD",
         availableLanguage: ["en", "bn"],
@@ -49,7 +49,7 @@ export function getWebSiteSchema() {
     "@type": "WebSite",
     "@id": `${BASE_URL}/#website`,
     url: BASE_URL,
-    name: "GreenLeaf Botanical Studio",
+    name: "MSH BloomCraft",
     description: "Premium Online Plant Nursery in Bangladesh",
     publisher: {
       "@id": `${BASE_URL}/#organization`,
@@ -71,7 +71,7 @@ export function getStoreSchema() {
     "@context": "https://schema.org",
     "@type": "Store",
     "@id": `${BASE_URL}/#store`,
-    name: "GreenLeaf Botanical Studio",
+    name: "MSH BloomCraft",
     url: BASE_URL,
     image: "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1200&q=80",
     description:
@@ -81,12 +81,12 @@ export function getStoreSchema() {
     paymentAccepted: "Cash on Delivery, bKash, Nagad, Credit Card",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "Mirpur Botanical Garden Area",
+      streetAddress: "Sector 7, Uttara",
       addressLocality: "Dhaka",
-      postalCode: "1216",
+      postalCode: "1230",
       addressCountry: "BD",
     },
-    telephone: "+8801700000000",
+    telephone: "+8801712345678",
     openingHoursSpecification: [
       {
         "@type": "OpeningHoursSpecification",
@@ -120,12 +120,12 @@ export function getProductSchema(product) {
     "@type": "Product",
     name: product.title,
     image: images,
-    description: product.description || "Premium nursery specimen from GreenLeaf.",
+    description: product.description || "Premium nursery specimen from MSH BloomCraft.",
     sku: id,
     category: product.category || "Plants",
     brand: {
       "@type": "Brand",
-      name: "GreenLeaf",
+      name: "MSH BloomCraft",
     },
     offers: {
       "@type": "Offer",
@@ -140,7 +140,7 @@ export function getProductSchema(product) {
           : "https://schema.org/OutOfStock",
       seller: {
         "@type": "Organization",
-        name: "GreenLeaf Botanical Studio",
+        name: "MSH BloomCraft",
       },
     },
   };
@@ -170,11 +170,11 @@ export function getBlogSchema(blog) {
     dateModified: blog.updatedAt ? new Date(blog.updatedAt).toISOString() : new Date().toISOString(),
     author: {
       "@type": "Person",
-      name: blog.author?.name || "GreenLeaf Botanist",
+      name: blog.author?.name || "BloomCraft Botanist",
     },
     publisher: {
       "@type": "Organization",
-      name: "GreenLeaf Botanical Studio",
+      name: "MSH BloomCraft",
       logo: {
         "@type": "ImageObject",
         url: `${BASE_URL}/icon.png`,

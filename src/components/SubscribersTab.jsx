@@ -144,7 +144,7 @@ export default function SubscribersTab({ onCountChange }) {
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `greenleaf-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+      `nursery-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
     );
     document.body.appendChild(link);
     link.click();

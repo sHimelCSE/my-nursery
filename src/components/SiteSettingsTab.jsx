@@ -13,14 +13,12 @@ import {
   Share2,
   Megaphone,
   FileText,
-  Shield,
   Save,
   RefreshCw,
   Check,
   Building2,
   Globe,
   Sliders,
-  Sparkles,
   Upload,
   Trash2,
   Eye,
@@ -28,18 +26,20 @@ import {
   Image as ImageIcon,
   Plus,
   Link as LinkIcon,
+  Tag,
+  Coins,
+  Sparkles,
 } from "lucide-react";
 import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 import BrandLogo from "@/components/BrandLogo";
-import RichTextEditor from "@/components/editor/RichTextEditor";
 
 export default function SiteSettingsTab() {
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [savingBranding, setSavingBranding] = useState(false);
-  const [activePolicyTab, setActivePolicyTab] = useState("about");
 
   const [settings, setSettings] = useState(DEFAULT_SITE_SETTINGS);
 
@@ -79,6 +79,10 @@ export default function SiteSettingsTab() {
               ...DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy,
               ...(json.data.pagesContent?.refundPolicy || {}),
             },
+            contactPage: {
+              ...DEFAULT_SITE_SETTINGS.pagesContent.contactPage,
+              ...(json.data.pagesContent?.contactPage || {}),
+            },
           },
         });
       }
@@ -105,7 +109,9 @@ export default function SiteSettingsTab() {
       const data = await res.json();
       if (data.success) {
         message.success("Site settings updated successfully!");
-        // Notify other windows/components
+        try {
+          localStorage.setItem("app_site_settings", JSON.stringify(data.data || settings));
+        } catch {}
         window.dispatchEvent(new Event("siteSettingsUpdated"));
       } else {
         message.error(data.message || "Failed to update settings");
@@ -155,7 +161,7 @@ export default function SiteSettingsTab() {
             logoUrl: data.secure_url,
           },
         }));
-        message.success("Brand logo compressed and uploaded successfully!");
+        message.success("Brand logo uploaded successfully!");
       } else {
         throw new Error(data.error?.message || "Upload failed");
       }
@@ -164,6 +170,56 @@ export default function SiteSettingsTab() {
       message.error(err.message || "Failed to upload logo to Cloudinary");
     } finally {
       setUploadingLogo(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleUploadFavicon = async (e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      message.error("Cloudinary credentials are not configured in environment variables.");
+      return;
+    }
+
+    setUploadingFavicon(true);
+    try {
+      const options = {
+        maxSizeMB: 0.1,
+        maxWidthOrHeight: 128,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      const formData = new FormData();
+      formData.append("file", compressedFile);
+      formData.append("upload_preset", uploadPreset);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        setSettings((prev) => ({
+          ...prev,
+          general: {
+            ...prev.general,
+            faviconUrl: data.secure_url,
+          },
+        }));
+        message.success("Favicon uploaded successfully!");
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (err) {
+      console.error("Favicon upload error:", err);
+      message.error(err.message || "Failed to upload favicon to Cloudinary");
+    } finally {
+      setUploadingFavicon(false);
       if (e.target) e.target.value = "";
     }
   };
@@ -179,6 +235,8 @@ export default function SiteSettingsTab() {
             ...settings.general,
             siteName: settings.general.siteName,
             tagline: settings.general.tagline,
+            currency: settings.general.currency,
+            faviconUrl: settings.general.faviconUrl,
             logoType: settings.general.logoType,
             logoUrl: settings.general.logoUrl,
           },
@@ -186,7 +244,10 @@ export default function SiteSettingsTab() {
       });
       const data = await res.json();
       if (data.success) {
-        message.success("Branding settings saved successfully!");
+        message.success("Brand Identity updated successfully!");
+        try {
+          localStorage.setItem("app_site_settings", JSON.stringify(data.data || settings));
+        } catch {}
         window.dispatchEvent(new Event("siteSettingsUpdated"));
       } else {
         throw new Error(data.message || "Failed to save branding settings");
@@ -210,7 +271,7 @@ export default function SiteSettingsTab() {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Top Banner & Save Action */}
+      {/* Top Banner & Global Save Action */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] text-[#2D5A27] text-xs font-bold uppercase tracking-wider mb-1">
@@ -218,10 +279,10 @@ export default function SiteSettingsTab() {
             <span>Storewide CMS Manager</span>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 font-serif">
-            Global Site Settings & Policy Content
+            Global Site Settings &amp; Store Configuration
           </h2>
           <p className="text-xs text-gray-500">
-            Control contact hotlines, floating WhatsApp, topbar announcements, and legal page copies in real time.
+            Control brand identity, store name, customer care hotlines, floating WhatsApp, topbar announcements, and footer copy in real time.
           </p>
         </div>
 
@@ -235,23 +296,26 @@ export default function SiteSettingsTab() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          <span>{saving ? "Saving Changes..." : "Save Settings"}</span>
+          <span>{saving ? "Saving Changes..." : "Save All Settings"}</span>
         </button>
       </div>
 
-      {/* ─── SECTION: Branding & Logo (লোগো ও ব্র্যান্ডিং) ───────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
+      {/* ─── SECTION 1: Brand Identity & Store Name (ব্র্যান্ড ও স্টোরের নাম) ───────────────────── */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-100/90 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
-              <Layers className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-[#1E3F20] text-white flex items-center justify-center font-bold shadow-xs">
+              <Building2 className="w-5 h-5 text-emerald-300" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Branding &amp; Logo (লোগো ও ব্র্যান্ডিং)
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#2D6A4F] text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                Primary Storefront Identity
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-900 font-serif">
+                1. Brand Identity &amp; Store Name (ব্র্যান্ড ও স্টোরের নাম)
               </h3>
               <p className="text-xs text-gray-500">
-                Customize your store logo image, brand name, tagline, and navbar display mode.
+                Configure your official store name, slogan tagline, currency symbol, logo presentation mode, and browser tab icon.
               </p>
             </div>
           </div>
@@ -259,7 +323,7 @@ export default function SiteSettingsTab() {
           <button
             type="button"
             onClick={handleSaveBranding}
-            disabled={savingBranding || uploadingLogo}
+            disabled={savingBranding || uploadingLogo || uploadingFavicon}
             className="px-5 py-2.5 rounded-full bg-[#1E3F20] hover:bg-[#152D17] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:bg-gray-300 self-start sm:self-auto"
           >
             {savingBranding ? (
@@ -267,117 +331,154 @@ export default function SiteSettingsTab() {
             ) : (
               <Save className="w-3.5 h-3.5" />
             )}
-            <span>{savingBranding ? "Saving..." : "Save Branding Settings"}</span>
+            <span>{savingBranding ? "Saving..." : "Save Brand Identity"}</span>
           </button>
         </div>
 
-        {/* Display Mode Selector (Radio pills) */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-700 block">
-            Display Mode (ডিসপ্লে মোড)
-          </label>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {[
-              {
-                id: "logo_with_text",
-                label: "Logo with Text (লোগো + নাম)",
-              },
-              {
-                id: "logo_only",
-                label: "Logo Only (শুধুমাত্র লোগো ছবি)",
-              },
-              {
-                id: "text_only",
-                label: "Text Only (শুধুমাত্র নাম ও ট্যাগলাইন)",
-              },
-            ].map((opt) => {
-              const isSelected = (settings.general.logoType || "logo_with_text") === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() =>
-                    setSettings({
-                      ...settings,
-                      general: { ...settings.general, logoType: opt.id },
-                    })
-                  }
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#1E3F20] text-white shadow-xs"
-                      : "bg-[#F7F8F4] hover:bg-gray-100 text-gray-700 border border-gray-200"
-                  }`}
-                >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
+        {/* Form Inputs Grid: Brand Name, Tagline, Currency & Logo Mode */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 1. Brand / Store Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>Brand / Store Name (স্টোরের নাম)</span>
+            </label>
+            <input
+              type="text"
+              value={settings.general.siteName || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  general: { ...settings.general, siteName: e.target.value },
+                })
+              }
+              placeholder="e.g. MSH BloomCraft"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+            <span className="text-[11px] text-gray-400">
+              Displayed in the navbar, invoice headers, browser tab title, and footer copyright.
+            </span>
+          </div>
+
+          {/* 2. Tagline / Slogan */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>Tagline / Slogan (ট্যাগলাইন বা স্লোগান)</span>
+            </label>
+            <input
+              type="text"
+              value={settings.general.tagline || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  general: { ...settings.general, tagline: e.target.value },
+                })
+              }
+              placeholder="e.g. PLANT SHOP"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+            <span className="text-[11px] text-gray-400">
+              Appears directly underneath your store brand name in uppercase tracking font.
+            </span>
+          </div>
+
+          {/* 3. Currency Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>Store Currency (মুদ্রা)</span>
+            </label>
+            <select
+              value={settings.general.currency || "BDT (৳)"}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  general: { ...settings.general, currency: e.target.value },
+                })
+              }
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            >
+              <option value="BDT (৳)">BDT (৳) - Bangladeshi Taka</option>
+              <option value="USD ($)">USD ($) - United States Dollar</option>
+            </select>
+            <span className="text-[11px] text-gray-400">
+              Displayed on the topbar and product pricing across your store.
+            </span>
+          </div>
+
+          {/* 4. Logo Display Mode (Radio Pills) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>Logo Display Mode (লোগো প্রদর্শন মোড)</span>
+            </label>
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {[
+                { id: "logo_with_text", label: "Logo with Text" },
+                { id: "logo_only", label: "Logo Only" },
+                { id: "text_only", label: "Text Only" },
+              ].map((opt) => {
+                const isSelected = (settings.general.logoType || "logo_with_text") === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        general: { ...settings.general, logoType: opt.id },
+                      })
+                    }
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-[#1E3F20] text-white shadow-xs"
+                        : "bg-[#F7F8F4] hover:bg-gray-100 text-gray-700 border border-gray-200"
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                    <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[11px] text-gray-400">
+              Choose how the logo is rendered in the main header and footer.
+            </span>
           </div>
         </div>
 
-        {/* Inputs & Logo Image Uploader Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-          {/* Left Column: Brand Name & Tagline */}
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 block">
-                Brand Name (দোকানের নাম)
+        {/* ── Logo Image & Favicon Uploaders Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2 border-t border-gray-100">
+          {/* Left: Logo Image Uploader */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                <span>Primary Brand Logo Image</span>
               </label>
-              <input
-                type="text"
-                value={settings.general.siteName || ""}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    general: { ...settings.general, siteName: e.target.value },
-                  })
-                }
-                placeholder="e.g. GreenLeaf"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
-              />
+              {settings.general.logoUrl && (
+                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Uploaded
+                </span>
+              )}
             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 block">
-                Tagline / Subtitle (ট্যাগলাইন বা সাবটাইটেল)
-              </label>
-              <input
-                type="text"
-                value={settings.general.tagline || ""}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    general: { ...settings.general, tagline: e.target.value },
-                  })
-                }
-                placeholder="e.g. BOTANICAL STUDIO"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
-              />
-            </div>
-          </div>
-
-          {/* Right Column: Logo Image Uploader */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700 block">
-              Logo Image (লোগো ছবি)
-            </label>
 
             {settings.general.logoUrl ? (
               <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-200 space-y-3">
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-16 rounded-xl bg-white border border-gray-200 p-2 flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-24 h-16 rounded-xl bg-white border border-gray-200 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                     <Image
                       src={settings.general.logoUrl}
-                      alt={settings.general.siteName || "Logo"}
-                      width={80}
+                      alt={settings.general.siteName || "Store Logo"}
+                      width={96}
                       height={48}
                       className="max-h-full max-w-full object-contain"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-gray-800 truncate">
-                      {settings.general.siteName || "Logo"} Uploaded
+                      {settings.general.siteName || "Store"} Logo Active
                     </p>
                     <p className="text-[11px] text-gray-400 truncate">
                       {settings.general.logoUrl}
@@ -385,7 +486,7 @@ export default function SiteSettingsTab() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1 border-t border-gray-200">
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
                   <label className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:border-gray-300 text-xs font-semibold text-gray-700 cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-2xs">
                     <Upload className="w-3.5 h-3.5 text-gray-500" />
                     <span>Change Logo</span>
@@ -441,7 +542,6 @@ export default function SiteSettingsTab() {
               </label>
             )}
 
-            {/* Optional manual URL input fallback */}
             <input
               type="text"
               value={settings.general.logoUrl || ""}
@@ -452,25 +552,150 @@ export default function SiteSettingsTab() {
                 })
               }
               placeholder="Or paste Cloudinary / direct image URL..."
-              className="w-full mt-2 px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 placeholder-gray-400 bg-white focus:outline-none focus:border-[#2D6A4F]"
+              className="w-full mt-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 placeholder-gray-400 bg-white focus:outline-none focus:border-[#2D6A4F]"
+            />
+          </div>
+
+          {/* Right: Favicon Uploader */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                <span>Browser Tab Favicon Icon</span>
+              </label>
+              {settings.general.faviconUrl && (
+                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Uploaded
+                </span>
+              )}
+            </div>
+
+            {settings.general.faviconUrl ? (
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-gray-200 space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                    <Image
+                      src={settings.general.faviconUrl}
+                      alt="Favicon"
+                      width={36}
+                      height={36}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-800 truncate">
+                      Browser Tab Favicon Active
+                    </p>
+                    <p className="text-[11px] text-gray-400 truncate">
+                      {settings.general.faviconUrl}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                  <label className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:border-gray-300 text-xs font-semibold text-gray-700 cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-2xs">
+                    <Upload className="w-3.5 h-3.5 text-gray-500" />
+                    <span>Change Favicon</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadFavicon}
+                      disabled={uploadingFavicon}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        general: { ...settings.general, faviconUrl: "" },
+                      })
+                    }
+                    className="px-3.5 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove Favicon</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 hover:border-[#2D6A4F] rounded-2xl bg-[#FAFBF9] hover:bg-emerald-50/40 transition-colors cursor-pointer text-center">
+                {uploadingFavicon ? (
+                  <div className="space-y-1.5 flex flex-col items-center">
+                    <RefreshCw className="w-6 h-6 text-[#2D6A4F] animate-spin" />
+                    <span className="text-xs font-semibold text-gray-700">Compressing &amp; Uploading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                    <span className="text-xs font-semibold text-gray-700">
+                      Upload Favicon (ICO, PNG, SVG)
+                    </span>
+                    <span className="text-[11px] text-gray-400 mt-0.5">
+                      Square icon for browser tabs &amp; mobile bookmarks
+                    </span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadFavicon}
+                  disabled={uploadingFavicon}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            <input
+              type="text"
+              value={settings.general.faviconUrl || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  general: { ...settings.general, faviconUrl: e.target.value },
+                })
+              }
+              placeholder="Or paste direct favicon image URL..."
+              className="w-full mt-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 placeholder-gray-400 bg-white focus:outline-none focus:border-[#2D6A4F]"
             />
           </div>
         </div>
 
-        {/* Live Preview Box */}
-        <div className="p-5 rounded-2xl bg-[#F7F8F4] border border-[#EBF0E6] space-y-3">
+        {/* ── Live Preview Box ── */}
+        <div className="p-5 rounded-2xl bg-[#F7F8F4] border border-[#EBF0E6] space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-gray-200/60">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-[#2D6A4F]" />
               <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                Navbar Live Preview (রিয়েল-টাইম প্রিভিউ)
+                Storefront Live Header Preview
               </span>
             </div>
-            <span className="text-[11px] text-gray-500 hidden sm:inline">
-              Mode: {settings.general.logoType || "logo_with_text"}
+            <span className="text-[11px] text-gray-500 font-medium">
+              Mode: {settings.general.logoType || "logo_with_text"} · Currency: {settings.general.currency || "BDT (৳)"}
             </span>
           </div>
 
+          {/* Browser Tab Simulation */}
+          <div className="max-w-xs bg-gray-200/80 rounded-t-xl px-3 py-1.5 flex items-center gap-2 text-[11px] text-gray-700 border border-b-0 border-gray-300">
+            {settings.general.faviconUrl ? (
+              <Image
+                src={settings.general.faviconUrl}
+                alt="Tab Icon"
+                width={14}
+                height={14}
+                className="w-3.5 h-3.5 object-contain"
+              />
+            ) : (
+              <Globe className="w-3.5 h-3.5 text-gray-500" />
+            )}
+            <span className="truncate font-medium">
+              {settings.general.siteName || "MSH BloomCraft"} · {settings.general.tagline || "PLANT SHOP"}
+            </span>
+          </div>
+
+          {/* Navbar Header Simulation */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BrandLogo
@@ -490,18 +715,18 @@ export default function SiteSettingsTab() {
         </div>
       </div>
 
-      {/* ─── SECTION 1: Contact & WhatsApp Setup ───────────────────────────── */}
+      {/* ─── SECTION 2: Customer Care & Contact Information ───────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
         <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
             <Phone className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900">
-              1. Contact & WhatsApp Setup (যোগাযোগ ও হোয়াটসঅ্যাপ)
+            <h3 className="text-base font-bold text-gray-900 font-serif">
+              2. Customer Care &amp; Contact Information (যোগাযোগ ও কাস্টমার কেয়ার)
             </h3>
             <p className="text-xs text-gray-500">
-              Customer support lines, physical nursery address, and floating WhatsApp widget configuration.
+              Support phone numbers, customer care email, physical nursery store address, and opening hours.
             </p>
           </div>
         </div>
@@ -514,7 +739,7 @@ export default function SiteSettingsTab() {
             </label>
             <input
               type="text"
-              value={settings.general.hotlinePhone}
+              value={settings.general.hotlinePhone || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -533,14 +758,14 @@ export default function SiteSettingsTab() {
             </label>
             <input
               type="email"
-              value={settings.general.contactEmail}
+              value={settings.general.contactEmail || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
                   general: { ...settings.general, contactEmail: e.target.value },
                 })
               }
-              placeholder="support@greenleafnursery.com"
+              placeholder="support@bloomcraftnursery.com"
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
             />
           </div>
@@ -552,7 +777,7 @@ export default function SiteSettingsTab() {
             </label>
             <input
               type="text"
-              value={settings.general.storeAddress}
+              value={settings.general.storeAddress || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -567,11 +792,11 @@ export default function SiteSettingsTab() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-[#2D6A4F]" />
-              <span>Business & Care Hours</span>
+              <span>Business &amp; Care Hours</span>
             </label>
             <input
               type="text"
-              value={settings.general.businessHours}
+              value={settings.general.businessHours || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -583,163 +808,83 @@ export default function SiteSettingsTab() {
             />
           </div>
         </div>
-
-        {/* Floating WhatsApp Configuration Sub-card */}
-        <div className="p-5 rounded-2xl bg-[#E8F5E9]/50 border border-[#2D6A4F]/20 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <MessageSquare className="w-5 h-5 text-[#2D6A4F]" />
-              <div>
-                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                  Floating WhatsApp Button Widget
-                </h4>
-                <p className="text-[11px] text-gray-500">
-                  Allow store visitors to chat directly with horticulturists from any page.
-                </p>
-              </div>
-            </div>
-
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.whatsapp.isEnabled}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    whatsapp: { ...settings.whatsapp, isEnabled: e.target.checked },
-                  })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2D6A4F]" />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-emerald-900/10">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-700">
-                WhatsApp Phone Number (with Country Code)
-              </label>
-              <input
-                type="text"
-                value={settings.whatsapp.whatsappNumber}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    whatsapp: { ...settings.whatsapp, whatsappNumber: e.target.value },
-                  })
-                }
-                placeholder="8801712345678"
-                className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-white focus:outline-none focus:border-[#2D6A4F]"
-              />
-              <span className="text-[10px] text-gray-400">Example: 8801712345678 (no + or spaces)</span>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-700">
-                Pre-filled Chat Message
-              </label>
-              <input
-                type="text"
-                value={settings.whatsapp.defaultMessage}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    whatsapp: { ...settings.whatsapp, defaultMessage: e.target.value },
-                  })
-                }
-                placeholder="Hello, I have a question about your nursery plants."
-                className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-white focus:outline-none focus:border-[#2D6A4F]"
-              />
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* ─── SECTION 2: Social Media Links ────────────────────────────────── */}
+      {/* ─── SECTION 3: Floating WhatsApp Support ───────────────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
-            <Share2 className="w-5 h-5" />
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 font-serif">
+                3. Floating WhatsApp Support (হোয়াটসঅ্যাপ সাপোর্ট)
+              </h3>
+              <p className="text-xs text-gray-500">
+                Direct floating WhatsApp chat button connecting customers to your nursery team.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-base font-bold text-gray-900">
-              2. Social Media Links (সোশ্যাল মিডিয়া প্রোফাইল)
-            </h3>
-            <p className="text-xs text-gray-500">
-              Displayed in the top navigation bar and footer social vector icons.
-            </p>
-          </div>
+
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.whatsapp.isEnabled}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  whatsapp: { ...settings.whatsapp, isEnabled: e.target.checked },
+                })
+              }
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2D6A4F]" />
+          </label>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">Facebook Page URL</label>
+            <label className="text-[11px] font-bold text-gray-700">
+              WhatsApp Phone Number (with Country Code)
+            </label>
             <input
               type="text"
-              value={settings.socialLinks.facebook}
+              value={settings.whatsapp.whatsappNumber || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
-                  socialLinks: { ...settings.socialLinks, facebook: e.target.value },
+                  whatsapp: { ...settings.whatsapp, whatsappNumber: e.target.value },
                 })
               }
-              placeholder="https://facebook.com/your-nursery"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+              placeholder="8801712345678"
+              className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
             />
+            <span className="text-[10px] text-gray-400">Example: 8801712345678 (no + or spaces)</span>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">Instagram Profile URL</label>
+            <label className="text-[11px] font-bold text-gray-700">
+              Pre-filled Chat Message
+            </label>
             <input
               type="text"
-              value={settings.socialLinks.instagram}
+              value={settings.whatsapp.defaultMessage || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
-                  socialLinks: { ...settings.socialLinks, instagram: e.target.value },
+                  whatsapp: { ...settings.whatsapp, defaultMessage: e.target.value },
                 })
               }
-              placeholder="https://instagram.com/your-nursery"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+              placeholder="Hello, I have a question about your nursery plants."
+              className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">YouTube Channel URL</label>
-            <input
-              type="text"
-              value={settings.socialLinks.youtube}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  socialLinks: { ...settings.socialLinks, youtube: e.target.value },
-                })
-              }
-              placeholder="https://youtube.com/@your-nursery"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">Twitter / X Profile URL</label>
-            <input
-              type="text"
-              value={settings.socialLinks.twitter}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  socialLinks: { ...settings.socialLinks, twitter: e.target.value },
-                })
-              }
-              placeholder="https://twitter.com/your-nursery"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
-            />
+            <span className="text-[10px] text-gray-400">Initial text typed into the customer's chat screen.</span>
           </div>
         </div>
       </div>
 
-      {/* ─── SECTION 3: Topbar Announcement ───────────────────────────────── */}
+      {/* ─── SECTION 4: Top Announcement Bar ─────────────────────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -747,11 +892,11 @@ export default function SiteSettingsTab() {
               <Megaphone className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                3. Topbar Announcement (টপবার নোটিস)
+              <h3 className="text-base font-bold text-gray-900 font-serif">
+                4. Top Announcement Bar (টপবার ঘোষণা)
               </h3>
               <p className="text-xs text-gray-500">
-                Display promo announcements or shipping offers in the green mini-bar above the header.
+                Notice strip placed at the very top of your site for offers, discounts, and announcements.
               </p>
             </div>
           </div>
@@ -772,12 +917,12 @@ export default function SiteSettingsTab() {
           </label>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 space-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-700">Announcement Text</label>
             <input
               type="text"
-              value={settings.topbar.announcementText}
+              value={settings.topbar.announcementText || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -790,10 +935,10 @@ export default function SiteSettingsTab() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">Target Link (Optional)</label>
+            <label className="text-xs font-bold text-gray-700">Clickable Link URL</label>
             <input
               type="text"
-              value={settings.topbar.announcementLink}
+              value={settings.topbar.announcementLink || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -807,28 +952,111 @@ export default function SiteSettingsTab() {
         </div>
       </div>
 
-      {/* ─── SECTION 4: Footer & Legal Customizer ─────────────────────────── */}
+      {/* ─── SECTION 5: Social Media Profiles ───────────────────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
         <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
-            <Building2 className="w-5 h-5" />
+            <Share2 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900">
-              4. Footer & Legal Customizer (ফুটার ব্র্যান্ডিং)
+            <h3 className="text-base font-bold text-gray-900 font-serif">
+              5. Social Media Profiles (সোশ্যাল মিডিয়া লিংক)
             </h3>
             <p className="text-xs text-gray-500">
-              Custom brand description snippet and copyright text in the store footer.
+              Direct URLs to your botanical community pages on Facebook, Instagram, YouTube, and Twitter.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">Facebook URL</label>
+            <input
+              type="url"
+              value={settings.socialLinks.facebook || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  socialLinks: { ...settings.socialLinks, facebook: e.target.value },
+                })
+              }
+              placeholder="https://facebook.com/your-nursery"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">Instagram URL</label>
+            <input
+              type="url"
+              value={settings.socialLinks.instagram || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  socialLinks: { ...settings.socialLinks, instagram: e.target.value },
+                })
+              }
+              placeholder="https://instagram.com/your-nursery"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">YouTube Channel URL</label>
+            <input
+              type="url"
+              value={settings.socialLinks.youtube || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  socialLinks: { ...settings.socialLinks, youtube: e.target.value },
+                })
+              }
+              placeholder="https://youtube.com/@your-nursery"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">Twitter / X URL</label>
+            <input
+              type="url"
+              value={settings.socialLinks.twitter || ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  socialLinks: { ...settings.socialLinks, twitter: e.target.value },
+                })
+              }
+              placeholder="https://twitter.com/your-nursery"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── SECTION 6: Footer Bio & Copyright ───────────────────────────────── */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
+        <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900 font-serif">
+              6. Footer Bio &amp; Copyright (ফুটার কপিরাইট)
+            </h3>
+            <p className="text-xs text-gray-500">
+              Footer brand summary text, copyright declaration, and footer bottom legal links.
             </p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-700">Footer Brand Bio / Mission Snippet</label>
+            <label className="text-xs font-bold text-gray-700">Footer Brand Bio</label>
             <textarea
               rows={3}
-              value={settings.footer.bioText}
+              value={settings.footer.bioText || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -844,439 +1072,114 @@ export default function SiteSettingsTab() {
             <label className="text-xs font-bold text-gray-700">Copyright Line</label>
             <input
               type="text"
-              value={settings.footer.copyrightText}
+              value={settings.footer.copyrightText || ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
                   footer: { ...settings.footer, copyrightText: e.target.value },
                 })
               }
-              placeholder="GreenLeaf Botanical Nursery BD. All rights reserved."
+              placeholder="MSH BloomCraft. All rights reserved."
               className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F] bg-[#FAFBF9]"
             />
           </div>
 
-          {/* ── Dynamic Bottom Copyright Links Manager ── */}
+          {/* Dynamic Bottom Copyright Links */}
           <div className="pt-4 border-t border-gray-100 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                   <LinkIcon className="w-3.5 h-3.5 text-[#2D5A27]" />
-                  <span>Bottom Copyright Links (কপিরাইট বার লিংকস)</span>
+                  <span>Bottom Copyright Links</span>
                 </label>
                 <p className="text-[11px] text-gray-500">
                   Navigation links displayed alongside the copyright notice at the bottom of every page.
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => {
-                  const currentLinks = Array.isArray(settings.footer?.copyrightLinks)
+                  const current = Array.isArray(settings.footer.copyrightLinks)
                     ? [...settings.footer.copyrightLinks]
                     : [];
-                  currentLinks.push({ label: "Policy Link", url: "/privacy" });
+                  current.push({ label: "New Link", url: "/" });
                   setSettings({
                     ...settings,
-                    footer: { ...settings.footer, copyrightLinks: currentLinks },
+                    footer: { ...settings.footer, copyrightLinks: current },
                   });
                 }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2D5A27] text-xs font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2D6A4F] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Link</span>
               </button>
             </div>
 
-            {/* List of links */}
             <div className="space-y-2">
-              {(!settings.footer?.copyrightLinks || settings.footer.copyrightLinks.length === 0) ? (
-                <div className="p-3 text-center rounded-xl bg-[#FAFBF9] border border-dashed border-gray-200 text-xs text-gray-400">
-                  No bottom links configured. Add one using the button above.
-                </div>
-              ) : (
-                settings.footer.copyrightLinks.map((link, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-[#FAFBF9] p-2.5 rounded-xl border border-gray-200/80"
-                  >
-                    <div className="w-1/2">
-                      <input
-                        type="text"
-                        value={link.label || ""}
-                        onChange={(e) => {
-                          const updated = [...settings.footer.copyrightLinks];
-                          updated[idx] = { ...updated[idx], label: e.target.value };
-                          setSettings({
-                            ...settings,
-                            footer: { ...settings.footer, copyrightLinks: updated },
-                          });
-                        }}
-                        placeholder="Link Label (e.g. Privacy Policy)"
-                        className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-800 bg-white focus:outline-none focus:border-[#2D5A27]"
-                      />
-                    </div>
-                    <div className="w-1/2">
-                      <input
-                        type="text"
-                        value={link.url || ""}
-                        onChange={(e) => {
-                          const updated = [...settings.footer.copyrightLinks];
-                          updated[idx] = { ...updated[idx], url: e.target.value };
-                          setSettings({
-                            ...settings,
-                            footer: { ...settings.footer, copyrightLinks: updated },
-                          });
-                        }}
-                        placeholder="URL (e.g. /privacy)"
-                        className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-800 bg-white focus:outline-none focus:border-[#2D5A27]"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = settings.footer.copyrightLinks.filter((_, i) => i !== idx);
+              {(settings.footer.copyrightLinks || []).map((link, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-[#FAFBF9] border border-gray-200"
+                >
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={link.label}
+                      onChange={(e) => {
+                        const updated = [...settings.footer.copyrightLinks];
+                        updated[idx].label = e.target.value;
                         setSettings({
                           ...settings,
                           footer: { ...settings.footer, copyrightLinks: updated },
                         });
                       }}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
-                      title="Remove link"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      placeholder="Link Label (e.g. Privacy Policy)"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F]"
+                    />
+                    <input
+                      type="text"
+                      value={link.url}
+                      onChange={(e) => {
+                        const updated = [...settings.footer.copyrightLinks];
+                        updated[idx].url = e.target.value;
+                        setSettings({
+                          ...settings,
+                          footer: { ...settings.footer, copyrightLinks: updated },
+                        });
+                      }}
+                      placeholder="URL (e.g. /privacy)"
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D6A4F]"
+                    />
                   </div>
-                ))
-              )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = settings.footer.copyrightLinks.filter((_, i) => i !== idx);
+                      setSettings({
+                        ...settings,
+                        footer: { ...settings.footer, copyrightLinks: updated },
+                      });
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    title="Remove Link"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── SECTION 5: Policy & About Us Content Editor ──────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-6">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center font-bold">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-gray-900">
-              5. Policy & About Us Content Editor (পেজ কনটেন্ট এডিটর)
-            </h3>
-            <p className="text-xs text-gray-500">
-              Edit the live copy of About Us, Privacy Policy, Terms & Conditions, and Return & Refund Policy.
-            </p>
-          </div>
-        </div>
-
-        {/* Tab Buttons for 4 Pages */}
-        <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-3">
-          {[
-            { key: "about", label: "About Us (আমাদের সম্পর্কে)" },
-            { key: "privacy", label: "Privacy Policy (গোপনীয়তা নীতি)" },
-            { key: "terms", label: "Terms of Service (শর্তাবলী)" },
-            { key: "refund", label: "Return & Refund (রিটার্ন ও রিফান্ড)" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActivePolicyTab(tab.key)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activePolicyTab === tab.key
-                  ? "bg-[#2D6A4F] text-white shadow-xs"
-                  : "bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-900"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── About Us Editor ── */}
-        {activePolicyTab === "about" && (
-          <div className="space-y-5 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Page Headline Title</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.aboutUs.title || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        aboutUs: { ...settings.pagesContent.aboutUs, title: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Sub-heading Badge</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.aboutUs.subtitle || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        aboutUs: { ...settings.pagesContent.aboutUs, subtitle: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                <span>About Us Page Body (Rich Text &amp; Cloudinary Images)</span>
-                <span className="text-[11px] text-gray-400 font-normal">
-                  Click the image icon to upload photos directly to Cloudinary
-                </span>
-              </label>
-              <RichTextEditor
-                value={settings.pagesContent.aboutUs.contentHtml || settings.pagesContent.aboutUs.storyText || ""}
-                onChange={(html) =>
-                  setSettings({
-                    ...settings,
-                    pagesContent: {
-                      ...settings.pagesContent,
-                      aboutUs: { ...settings.pagesContent.aboutUs, contentHtml: html },
-                    },
-                  })
-                }
-                placeholder="Compose your botanical story, mission, and greenhouse journey..."
-                minHeight="280px"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Privacy Policy Editor ── */}
-        {activePolicyTab === "privacy" && (
-          <div className="space-y-5 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Policy Title</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.privacyPolicy.title || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        privacyPolicy: { ...settings.pagesContent.privacyPolicy, title: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Last Updated Date</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.privacyPolicy.lastUpdated || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        privacyPolicy: { ...settings.pagesContent.privacyPolicy, lastUpdated: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                <span>Privacy Policy Content (Rich Text &amp; Cloudinary Images)</span>
-                <span className="text-[11px] text-gray-400 font-normal">
-                  Full formatting with headings, bullet points, blockquotes and graphics
-                </span>
-              </label>
-              <RichTextEditor
-                value={settings.pagesContent.privacyPolicy.contentHtml || settings.pagesContent.privacyPolicy.contentText || ""}
-                onChange={(html) =>
-                  setSettings({
-                    ...settings,
-                    pagesContent: {
-                      ...settings.pagesContent,
-                      privacyPolicy: { ...settings.pagesContent.privacyPolicy, contentHtml: html },
-                    },
-                  })
-                }
-                placeholder="Write your customer data protection and privacy policy terms..."
-                minHeight="280px"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Terms of Service Editor ── */}
-        {activePolicyTab === "terms" && (
-          <div className="space-y-5 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Agreement Title</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.termsOfService.title || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        termsOfService: { ...settings.pagesContent.termsOfService, title: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Effective Date</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.termsOfService.lastUpdated || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        termsOfService: { ...settings.pagesContent.termsOfService, lastUpdated: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                <span>Terms of Service Content (Rich Text &amp; Cloudinary Images)</span>
-                <span className="text-[11px] text-gray-400 font-normal">
-                  Define purchasing, ordering, and delivery conditions
-                </span>
-              </label>
-              <RichTextEditor
-                value={settings.pagesContent.termsOfService.contentHtml || settings.pagesContent.termsOfService.contentText || ""}
-                onChange={(html) =>
-                  setSettings({
-                    ...settings,
-                    pagesContent: {
-                      ...settings.pagesContent,
-                      termsOfService: { ...settings.pagesContent.termsOfService, contentHtml: html },
-                    },
-                  })
-                }
-                placeholder="Write your store terms and conditions of service..."
-                minHeight="280px"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Return & Refund Editor ── */}
-        {activePolicyTab === "refund" && (
-          <div className="space-y-5 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Guarantee Title</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.refundPolicy.title || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        refundPolicy: { ...settings.pagesContent.refundPolicy, title: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Policy Revision Date</label>
-                <input
-                  type="text"
-                  value={settings.pagesContent.refundPolicy.lastUpdated || ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      pagesContent: {
-                        ...settings.pagesContent,
-                        refundPolicy: { ...settings.pagesContent.refundPolicy, lastUpdated: e.target.value },
-                      },
-                    })
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 bg-[#FAFBF9] focus:outline-none focus:border-[#2D6A4F]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                <span>Replacement &amp; Refund Policy Rules (Rich Text &amp; Cloudinary Images)</span>
-                <span className="text-[11px] text-gray-400 font-normal">
-                  Clarify return guidelines, transit damage, and live plant guarantee
-                </span>
-              </label>
-              <RichTextEditor
-                value={settings.pagesContent.refundPolicy.contentHtml || settings.pagesContent.refundPolicy.contentText || ""}
-                onChange={(html) =>
-                  setSettings({
-                    ...settings,
-                    pagesContent: {
-                      ...settings.pagesContent,
-                      refundPolicy: { ...settings.pagesContent.refundPolicy, contentHtml: html },
-                    },
-                  })
-                }
-                placeholder="Write your live plant replacement, inspection, and refund conditions..."
-                minHeight="280px"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Quick Save Page Content Action Bar */}
-        <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
-            Changes to page content will reflect immediately across public storefront routes.
+      {/* Sticky Bottom Save Action Bar */}
+      <div className="sticky bottom-4 z-40 bg-white/95 backdrop-blur-md rounded-2xl p-4 border border-gray-200 shadow-lg flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#2D6A4F]" />
+          <span className="text-xs font-bold text-gray-700">
+            Unsaved changes will not be visible on the live storefront until saved.
           </span>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-[#2D5A27] hover:bg-[#1E3F20] text-white text-xs font-bold inline-flex items-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
-          >
-            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span>Save Page Content (কনটেন্ট সংরক্ষণ করুন)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom Save Button Bar */}
-      <div className="sticky bottom-6 z-20 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-gray-200 shadow-xl flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
-          <Sparkles className="w-4 h-4 text-[#7BAE37]" />
-          <span>Remember to save your settings to propagate updates storewide.</span>
         </div>
 
         <button
@@ -1285,11 +1188,11 @@ export default function SiteSettingsTab() {
           className="px-6 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all cursor-pointer disabled:bg-gray-300"
         >
           {saving ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
           ) : (
-            <Check className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
           )}
-          <span>{saving ? "Saving..." : "Save Settings"}</span>
+          <span>{saving ? "Saving Changes..." : "Save All Settings"}</span>
         </button>
       </div>
     </div>

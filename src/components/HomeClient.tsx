@@ -695,7 +695,7 @@ export default function HomeClient() {
               const postDate = post.createdAt
                 ? new Date(post.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                 : (post.date || "Botanical Guide");
-              const authorName = post.author?.name || post.author || "GreenLeaf Botanist";
+              const authorName = post.author?.name || post.author || "BloomCraft Botanist";
               const postImage = post.coverImage || post.image || PRODUCT_FALLBACK;
 
               return (

@@ -4,33 +4,131 @@ import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Mail,
-  Phone,
   Truck,
   MessageSquare,
   Lock,
   FileCheck,
 } from "lucide-react";
+import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
 import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 export default function PrivacyPolicyPage() {
-  const [content, setContent] = useState(DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy);
-  const [general, setGeneral] = useState(DEFAULT_SITE_SETTINGS.general);
+  const [pageConfig, setPageConfig] = useState(DEFAULT_PAGE_THEME_CONFIG);
+  const [siteSettings, setSiteSettings] = useState(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
-    fetch("/api/site-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          if (data.data.pagesContent?.privacyPolicy) {
-            setContent(data.data.pagesContent.privacyPolicy);
+    // 1. Try local cache
+    try {
+      const cachedPage = localStorage.getItem("app_page_theme_config");
+      if (cachedPage) {
+        const parsed = JSON.parse(cachedPage);
+        setPageConfig((prev) => ({
+          ...prev,
+          ...parsed,
+          policyPages: {
+            ...prev.policyPages,
+            ...(parsed.policyPages || {}),
+            privacy: {
+              ...(prev.policyPages?.privacy || {}),
+              ...(parsed.policyPages?.privacy || {}),
+            },
+          },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const cachedSite = localStorage.getItem("app_site_settings");
+      if (cachedSite) {
+        const parsed = JSON.parse(cachedSite);
+        setSiteSettings((prev) => ({
+          ...prev,
+          ...parsed,
+          general: { ...prev.general, ...(parsed.general || {}) },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Fetch fresh page theme config
+    const loadPageConfig = () => {
+      fetch("/api/page-theme-config")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            setPageConfig((prev) => ({
+              ...prev,
+              ...data.data,
+              policyPages: {
+                ...prev.policyPages,
+                ...(data.data.policyPages || {}),
+                privacy: {
+                  ...(prev.policyPages?.privacy || {}),
+                  ...(data.data.policyPages?.privacy || {}),
+                },
+              },
+            }));
+            try {
+              localStorage.setItem("app_page_theme_config", JSON.stringify(data.data));
+            } catch {
+              // ignore
+            }
           }
-          if (data.data.general) {
-            setGeneral(data.data.general);
+        })
+        .catch((err) => console.error("Failed to load privacy page config:", err));
+    };
+
+    // 3. Fetch fresh site settings for contact email / hotline
+    const loadSiteSettings = () => {
+      fetch("/api/site-settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            setSiteSettings((prev) => ({
+              ...prev,
+              ...data.data,
+              general: { ...prev.general, ...(data.data.general || {}) },
+            }));
+            try {
+              localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+            } catch {
+              // ignore
+            }
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch((err) => console.error("Failed to load site settings:", err));
+    };
+
+    loadPageConfig();
+    loadSiteSettings();
+
+    const handlePageUpdate = () => loadPageConfig();
+    const handleSiteUpdate = () => loadSiteSettings();
+    window.addEventListener("pageThemeConfigUpdated", handlePageUpdate);
+    window.addEventListener("siteSettingsUpdated", handleSiteUpdate);
+
+    return () => {
+      window.removeEventListener("pageThemeConfigUpdated", handlePageUpdate);
+      window.removeEventListener("siteSettingsUpdated", handleSiteUpdate);
+    };
   }, []);
+
+  const privacy = pageConfig.policyPages?.privacy || DEFAULT_PAGE_THEME_CONFIG.policyPages.privacy;
+  const general = siteSettings.general || DEFAULT_SITE_SETTINGS.general;
+
+  const brandName = general.siteName || "MSH BloomCraft";
+  const badgeText = privacy.badge || "Customer Data Protection Guarantee";
+  const pageTitle = privacy.title || "Privacy & Customer Data Protection Policy";
+  const lastUpdated = privacy.lastUpdated || "Recently Updated";
+  const contactEmail = general.contactEmail || "support@bloomcraftnursery.com";
+  const hotlinePhone = general.hotlinePhone || "+880 1712-345678";
+
+  const cleanHtml = (privacy.contentHtml || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\u00a0/g, " ");
 
   return (
     <div className="min-h-screen bg-[#FAFBF9] text-slate-800 py-14 px-4 sm:px-6 lg:px-8">
@@ -39,28 +137,28 @@ export default function PrivacyPolicyPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
             <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
-            <span>Customer Data Protection Guarantee</span>
+            <span>{badgeText}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold font-serif text-slate-900 tracking-tight">
-            {content.title || "Privacy & Customer Data Protection Policy"}
+            {pageTitle}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Last updated: {content.lastUpdated || "October 2026"} · GreenLeaf Nursery Bangladesh
+            Last updated: {lastUpdated} · {brandName}
           </p>
         </div>
 
         {/* Content Box */}
-        <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-sm p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
-          {/* Dynamic Policy Paragraphs */}
+        <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
+          {/* Dynamic Policy Content */}
           <section className="leading-relaxed">
-            {content.contentHtml ? (
+            {cleanHtml ? (
               <div
-                className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose"
-                dangerouslySetInnerHTML={{ __html: content.contentHtml }}
+                className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose break-words"
+                dangerouslySetInnerHTML={{ __html: cleanHtml }}
               />
             ) : (
-              <div className="space-y-4 whitespace-pre-line leading-relaxed">
-                {content.contentText}
+              <div className="space-y-4 whitespace-pre-line leading-relaxed break-words text-slate-500 italic">
+                Policy details are currently being updated.
               </div>
             )}
           </section>
@@ -90,7 +188,7 @@ export default function PrivacyPolicyPage() {
             <div className="p-4 rounded-2xl bg-emerald-50/40 border border-emerald-100/60 space-y-1.5">
               <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
                 <MessageSquare className="w-4 h-4 text-[#2D6A4F]" />
-                <span>SMS Notifications</span>
+                <span>Order Notifications</span>
               </div>
               <p className="text-xs text-slate-600">
                 Automated order confirmation and courier dispatch notifications sent directly to your phone.
@@ -117,17 +215,17 @@ export default function PrivacyPolicyPage() {
                 <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                   Email our Data Compliance team at{" "}
                   <a
-                    href={`mailto:${general.contactEmail || "support@greenleafnursery.com"}`}
+                    href={`mailto:${contactEmail}`}
                     className="font-bold text-[#2D6A4F] hover:underline"
                   >
-                    {general.contactEmail || "support@greenleafnursery.com"}
+                    {contactEmail}
                   </a>{" "}
                   or call our hotline at{" "}
                   <a
-                    href={`tel:${(general.hotlinePhone || "+8801712345678").replace(/\s+/g, "")}`}
+                    href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
                     className="font-bold text-[#2D6A4F] hover:underline"
                   >
-                    {general.hotlinePhone || "+880 1712-345678"}
+                    {hotlinePhone}
                   </a>
                   .
                 </p>

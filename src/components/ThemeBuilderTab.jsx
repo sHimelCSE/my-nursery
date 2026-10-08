@@ -26,7 +26,15 @@ import {
 import imageCompression from "browser-image-compression";
 import NavigationManagerTab from "@/components/NavigationManagerTab";
 import HomepageCustomizerTab from "@/components/HomepageCustomizerTab";
+import PagesCustomizerTab from "@/components/PagesCustomizerTab";
 import {
+  Home,
+  Sprout,
+  Phone,
+  ShieldCheck,
+  FileText,
+  RotateCcw,
+  Menu as MenuIcon,
   Sliders,
   UploadCloud,
   Image as ImageIcon,
@@ -197,7 +205,7 @@ const TEMPLATE_PRESETS = [
         {
           name: "Nusrat Jahan",
           role: "Apartment Plant Lover · Sylhet",
-          review: "Fast delivery and the free plant doctor advice on WhatsApp saved my Peace Lily from drooping. Highly recommend GreenLeaf!",
+          review: "Fast delivery and the free plant doctor advice on WhatsApp saved my Peace Lily from drooping. Highly recommended!",
           rating: 5,
         },
       ],
@@ -220,8 +228,8 @@ const TEMPLATE_PRESETS = [
 export default function ThemeBuilderTab({ onNavigateTab }) {
   const { message: antdMessage } = App.useApp();
 
-  // Active Sub-Tab: "customizer" | "sections" | "menu"
-  const [activeSubTab, setActiveSubTab] = useState("customizer");
+  // Active Sub-Tab: "homepage" | "about" | "contact" | "privacy" | "terms" | "refund" | "sections" | "menu"
+  const [activeSubTab, setActiveSubTab] = useState("homepage");
 
   // ─── Sections State ──────────────────────────────────────────────────────────
   const [sections, setSections] = useState([]);
@@ -950,56 +958,64 @@ export default function ThemeBuilderTab({ onNavigateTab }) {
       <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-            <AppstoreOutlined className="text-[#2D6A4F]" />
-            Homepage Section Builder & Menu Management
+            <LayoutOutlined className="text-[#2D6A4F]" />
+            Theme &amp; Multi-Page Section Customizer
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Customize homepage sections in real-time, reorder blocks, and manage store navigation links.
+            Section-by-section live controls for Homepage, About Us, Contact Us, Policies, and Navigation Menus.
           </p>
         </div>
 
-        {/* Sub-tab pills */}
-        <div className="flex items-center gap-2 bg-[#FAFBF9] p-1.5 rounded-2xl border border-emerald-100/60 self-start sm:self-auto flex-wrap">
-          <button
-            onClick={() => setActiveSubTab("customizer")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeSubTab === "customizer"
-                ? "bg-[#2D6A4F] text-white shadow-sm"
-                : "text-slate-600 hover:text-[#2D6A4F]"
-              }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Homepage Section Manager (9 Sections)</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab("sections")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeSubTab === "sections"
-                ? "bg-[#2D6A4F] text-white shadow-sm"
-                : "text-slate-600 hover:text-[#2D6A4F]"
-              }`}
-          >
-            <AppstoreOutlined />
-            <span>Custom Page Blocks ({sections.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab("menu")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeSubTab === "menu"
-                ? "bg-[#2D6A4F] text-white shadow-sm"
-                : "text-slate-600 hover:text-[#2D6A4F]"
-              }`}
-          >
-            <MenuOutlined />
-            <span>Navigation Menus ({menus.length})</span>
-          </button>
+        {/* Page Switcher Tabs */}
+        <div className="flex items-center gap-1.5 bg-[#FAFBF9] p-1.5 rounded-2xl border border-emerald-100/60 self-start sm:self-auto flex-wrap">
+          {[
+            { key: "homepage", label: "Homepage", icon: Home },
+            { key: "about", label: "About Us", icon: Sprout },
+            { key: "contact", label: "Contact Us", icon: Phone },
+            { key: "privacy", label: "Privacy Policy", icon: ShieldCheck },
+            { key: "terms", label: "Terms of Service", icon: FileText },
+            { key: "refund", label: "Return & Refund", icon: RotateCcw },
+            { key: "sections", label: `Custom Blocks (${sections.length})`, icon: Layers },
+            { key: "menu", label: `Menus (${menus.length})`, icon: MenuIcon },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive =
+              activeSubTab === tab.key || (tab.key === "homepage" && activeSubTab === "customizer");
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveSubTab(tab.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-[#2D6A4F] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-[#2D6A4F] hover:bg-emerald-50/60"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SUB-TAB 0: HOMEPAGE SECTION MANAGER (9 SECTIONS)
+          SUB-TAB: HOMEPAGE SECTION MANAGER (9 SECTIONS)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {activeSubTab === "customizer" && <HomepageCustomizerTab onNavigateTab={onNavigateTab} />}
+      {(activeSubTab === "homepage" || activeSubTab === "customizer") && (
+        <HomepageCustomizerTab onNavigateTab={onNavigateTab} />
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SUB-TAB 1: HOMEPAGE SECTIONS BUILDER
+          SUB-TAB: INNER STOREFRONT PAGES (ABOUT, CONTACT, PRIVACY, TERMS, REFUND)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {["about", "contact", "privacy", "terms", "refund"].includes(activeSubTab) && (
+        <PagesCustomizerTab activePage={activeSubTab} onPageChange={setActiveSubTab} />
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SUB-TAB: HOMEPAGE CUSTOM BLOCKS BUILDER
       ═══════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === "sections" && (
         <div className="space-y-4">

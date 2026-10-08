@@ -3,16 +3,17 @@ import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 export { DEFAULT_SITE_SETTINGS };
 
-
 const SiteSettingSchema = new Schema(
   {
     general: {
-      siteName: { type: String, default: "" },
-      tagline: { type: String, default: "" },
+      siteName: { type: String, default: DEFAULT_SITE_SETTINGS.general.siteName },
+      tagline: { type: String, default: DEFAULT_SITE_SETTINGS.general.tagline },
+      faviconUrl: { type: String, default: DEFAULT_SITE_SETTINGS.general.faviconUrl },
+      currency: { type: String, default: DEFAULT_SITE_SETTINGS.general.currency },
       logoType: {
         type: String,
         enum: ["logo_only", "logo_with_text", "text_only"],
-        default: "logo_only",
+        default: DEFAULT_SITE_SETTINGS.general.logoType,
       },
       logoUrl: { type: String, default: "" },
       contactEmail: { type: String, default: DEFAULT_SITE_SETTINGS.general.contactEmail },
@@ -50,27 +51,35 @@ const SiteSettingSchema = new Schema(
       aboutUs: {
         title: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.title },
         subtitle: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.subtitle },
+        badge: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.badge },
         contentHtml: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.contentHtml },
         storyText: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.storyText },
         missionText: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.aboutUs.missionText },
       },
       privacyPolicy: {
         title: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy.title },
+        badge: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy.badge },
         lastUpdated: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy.lastUpdated },
         contentHtml: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy.contentHtml },
         contentText: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.privacyPolicy.contentText },
       },
       termsOfService: {
         title: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.termsOfService.title },
+        badge: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.termsOfService.badge },
         lastUpdated: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.termsOfService.lastUpdated },
         contentHtml: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.termsOfService.contentHtml },
         contentText: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.termsOfService.contentText },
       },
       refundPolicy: {
         title: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy.title },
+        badge: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy.badge },
         lastUpdated: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy.lastUpdated },
         contentHtml: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy.contentHtml },
         contentText: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.refundPolicy.contentText },
+      },
+      contactPage: {
+        title: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.contactPage.title },
+        subtitle: { type: String, default: DEFAULT_SITE_SETTINGS.pagesContent.contactPage.subtitle },
       },
     },
   },
@@ -80,13 +89,56 @@ const SiteSettingSchema = new Schema(
 );
 
 /**
- * Singleton Helper: Get or initialize global site settings
+ * Singleton Helper: Get or initialize global site settings with auto-migration
  */
 SiteSettingSchema.statics.getSettings = async function () {
   let settings = await this.findOne({});
   if (!settings) {
     settings = await this.create(DEFAULT_SITE_SETTINGS);
+    return settings;
   }
+
+  let modified = false;
+  if (!settings.general) {
+    settings.general = DEFAULT_SITE_SETTINGS.general;
+    modified = true;
+  } else {
+    if (!settings.general.siteName || settings.general.siteName.trim() === "") {
+      settings.general.siteName = DEFAULT_SITE_SETTINGS.general.siteName;
+      modified = true;
+    }
+    if (!settings.general.tagline || settings.general.tagline.trim() === "") {
+      settings.general.tagline = DEFAULT_SITE_SETTINGS.general.tagline;
+      modified = true;
+    }
+    if (!settings.general.currency || settings.general.currency.trim() === "") {
+      settings.general.currency = DEFAULT_SITE_SETTINGS.general.currency;
+      modified = true;
+    }
+    if (!settings.general.logoType) {
+      settings.general.logoType = DEFAULT_SITE_SETTINGS.general.logoType;
+      modified = true;
+    }
+    if (settings.general.faviconUrl === undefined) {
+      settings.general.faviconUrl = DEFAULT_SITE_SETTINGS.general.faviconUrl;
+      modified = true;
+    }
+  }
+
+  if (settings.footer?.copyrightText && settings.footer.copyrightText.includes("GreenLeaf")) {
+    settings.footer.copyrightText = DEFAULT_SITE_SETTINGS.footer.copyrightText;
+    modified = true;
+  }
+
+  if (settings.general?.contactEmail && settings.general.contactEmail.includes("greenleaf")) {
+    settings.general.contactEmail = DEFAULT_SITE_SETTINGS.general.contactEmail;
+    modified = true;
+  }
+
+  if (modified) {
+    await settings.save();
+  }
+
   return settings;
 };
 

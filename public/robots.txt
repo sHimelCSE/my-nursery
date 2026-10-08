@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /Manage_Admin/
+Disallow: /Manage_Admin/*
+Disallow: /api/*
+Disallow: /dashboard/*
+Disallow: /my-orders
+Disallow: /checkout
+Disallow: /order-success/*
+
+Sitemap: https://my-nursery-flame.vercel.app/sitemap.xml

@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
           href="/"
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#4B5563] hover:text-[#2D6A4F] transition-colors"
         >
-          <ArrowLeftOutlined /> Back to GreenLeaf Nursery Store
+          <ArrowLeftOutlined /> Back to Storefront
         </Link>
       </div>
 
@@ -96,7 +96,7 @@ export default function AdminLoginPage() {
               Admin Control Center
             </h1>
             <p className="text-xs text-[#6B7280] mt-1">
-              Sign in with your verified GreenLeaf administrator credentials
+              Sign in with your verified administrator credentials
             </p>
           </div>
 
@@ -107,7 +107,7 @@ export default function AdminLoginPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold leading-relaxed"
             >
-              ⚠️ {error}
+              {error}
             </motion.div>
           )}
 
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
                 <input
                   type="email"
                   required
-                  placeholder="admin@greenleaf.com"
+                  placeholder="admin@store.com"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-[#1A2E22] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#40916C]/40 focus:border-[#40916C] transition-all"

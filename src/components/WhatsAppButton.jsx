@@ -25,12 +25,25 @@ export default function WhatsAppButton() {
   const [settings, setSettings] = useState(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.whatsapp) {
+          setSettings((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {}
+
     const loadSettings = () => {
       fetch("/api/site-settings")
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.data) {
             setSettings(data.data);
+            try {
+              localStorage.setItem("app_site_settings", JSON.stringify(data.data));
+            } catch {}
           }
         })
         .catch(() => {});
@@ -50,12 +63,17 @@ export default function WhatsAppButton() {
     return null;
   }
 
-  const rawNumber = settings.whatsapp?.whatsappNumber || "8801712345678";
+  const rawNumber =
+    settings.whatsapp?.whatsappNumber ||
+    settings.general?.hotlinePhone ||
+    DEFAULT_SITE_SETTINGS.whatsapp.whatsappNumber;
   const cleanNumber = rawNumber.replace(/[^\d]/g, "");
   const defaultMsg =
     settings.whatsapp?.defaultMessage ||
-    "Hello, I have a question about your nursery plants.";
-  const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(defaultMsg)}`;
+    DEFAULT_SITE_SETTINGS.whatsapp.defaultMessage;
+  const whatsappUrl = cleanNumber
+    ? `https://wa.me/${cleanNumber}?text=${encodeURIComponent(defaultMsg)}`
+    : "#";
 
   return (
     <div

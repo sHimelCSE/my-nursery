@@ -341,7 +341,7 @@ export default function BlogListingPage() {
                         </div>
                         <div className="text-left">
                           <p className="text-xs font-bold text-[#1C2B1E] leading-tight">
-                            {blog.author?.name || "GreenLeaf Botanist"}
+                            {blog.author?.name || "BloomCraft Botanist"}
                           </p>
                           <p className="text-[10px] text-gray-500 leading-tight">
                             {blog.author?.role || "Specialist"}

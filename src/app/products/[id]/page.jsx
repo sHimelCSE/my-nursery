@@ -19,10 +19,17 @@ export async function generateMetadata({ params }) {
     await dbConnect();
     const product = await Product.findById(id).lean();
 
+    let siteName = "MSH BloomCraft";
+    try {
+      const SiteSetting = (await import("@/models/SiteSetting")).default;
+      const settings = await SiteSetting.getSettings();
+      if (settings?.general?.siteName) siteName = settings.general.siteName;
+    } catch {}
+
     if (!product) {
       return {
         title: "Product Not Found",
-        description: "Botanical specimen not found in GreenLeaf inventory.",
+        description: `Botanical specimen not found in ${siteName} inventory.`,
       };
     }
 
@@ -41,7 +48,7 @@ export async function generateMetadata({ params }) {
       title: product.title,
       description,
       openGraph: {
-        title: `${product.title} | GreenLeaf Botanical Studio`,
+        title: `${product.title} | ${siteName}`,
         description,
         type: "website",
         images: [
@@ -55,7 +62,7 @@ export async function generateMetadata({ params }) {
       },
       twitter: {
         card: "summary_large_image",
-        title: `${product.title} | GreenLeaf Botanical Studio`,
+        title: `${product.title} | ${siteName}`,
         description,
         images: [imageUrl],
       },
@@ -65,7 +72,7 @@ export async function generateMetadata({ params }) {
     return {
       title: "Botanical Specimen Details",
       description:
-        "Explore premium indoor plants, fertilizers, and planters at GreenLeaf.",
+        "Explore premium indoor plants, fertilizers, and planters at our nursery.",
     };
   }
 }

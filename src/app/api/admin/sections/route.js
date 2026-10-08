@@ -134,11 +134,11 @@ const DEFAULT_SECTIONS = [
   {
     sectionType: "features",
     title: "Your Trusted Green Partner",
-    subtitle: "Why plant lovers across Bangladesh choose GreenLeaf Nursery",
+    subtitle: "Why plant lovers across Bangladesh choose our nursery",
     order: 3,
     isActive: true,
     content: {
-      badgeText: "Why GreenLeaf",
+      badgeText: "Why Choose Us",
       features: [
         { icon: "Sprout", title: "Fresh & Healthy", desc: "Every plant nursery-grown and quality-checked before dispatch." },
         { icon: "Truck", title: "Fast Delivery", desc: "Same-day in Dhaka · Next-day across Bangladesh." },

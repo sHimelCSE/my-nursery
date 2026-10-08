@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { App } from "antd";
 import {
-  PhoneOutlined,
-  MailOutlined,
-  EnvironmentOutlined,
-  ClockCircleOutlined,
-  SendOutlined,
-  CheckCircleOutlined,
-  WhatsAppOutlined,
-  SafetyCertificateOutlined,
-  CustomerServiceOutlined,
-} from "@ant-design/icons";
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  Send,
+  CheckCircle2,
+  MessageCircle,
+  ShieldCheck,
+  Headphones,
+  Stethoscope,
+  Sprout,
+  Lock,
+} from "lucide-react";
+import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
+import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 const BD_PHONE_REGEX = /^01[3-9]\d{8}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,6 +34,67 @@ const SUBJECT_OPTIONS = [
 
 export default function ContactPage() {
   const { message: antdMessage } = App.useApp();
+
+  const [pageConfig, setPageConfig] = useState(DEFAULT_PAGE_THEME_CONFIG.contactPage);
+  const [siteSettings, setSiteSettings] = useState(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    // 1. Instant cache hydration
+    try {
+      const cachedPage = localStorage.getItem("app_page_theme_config");
+      if (cachedPage) {
+        const parsed = JSON.parse(cachedPage);
+        if (parsed?.contactPage) {
+          setPageConfig((prev) => ({ ...prev, ...parsed.contactPage }));
+        }
+      }
+      const cachedSite = localStorage.getItem("app_site_settings");
+      if (cachedSite) {
+        const parsedSite = JSON.parse(cachedSite);
+        if (parsedSite?.general) {
+          setSiteSettings((prev) => ({ ...prev, ...parsedSite }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Fetch page theme config
+    const loadConfig = () => {
+      fetch("/api/page-theme-config")
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success && json.data?.contactPage) {
+            setPageConfig(json.data.contactPage);
+            try {
+              localStorage.setItem("app_page_theme_config", JSON.stringify(json.data));
+            } catch {
+              // ignore
+            }
+          }
+        })
+        .catch((err) => console.error("Failed to load contact page theme config:", err));
+    };
+    loadConfig();
+
+    // 3. Fetch global site settings (for address, hotline, email, WhatsApp)
+    fetch("/api/site-settings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setSiteSettings(json.data);
+          try {
+            localStorage.setItem("app_site_settings", JSON.stringify(json.data));
+          } catch {
+            // ignore
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load site settings:", err));
+
+    window.addEventListener("pageThemeConfigUpdated", loadConfig);
+    return () => window.removeEventListener("pageThemeConfigUpdated", loadConfig);
+  }, []);
 
   const [form, setForm] = useState({
     name: "",
@@ -118,20 +184,44 @@ export default function ContactPage() {
     }
   };
 
+  const brandName = siteSettings?.general?.siteName || "MSH BloomCraft";
+  const contactPageBadge = pageConfig?.badge || "We are here to help you grow";
+  const contactPageTitle =
+    pageConfig?.title || `Get in Touch with ${brandName}`;
+  const contactPageSubtitle =
+    pageConfig?.subtitle ||
+    "Have a question about a plant species, need sick plant care diagnosis, or have an order inquiry? Reach out to our dedicated botanists and support specialists.";
+
+  const storeAddress =
+    siteSettings?.general?.storeAddress || "Sector 7, Uttara, Dhaka-1230, Bangladesh";
+  const hotlinePhone = siteSettings?.general?.hotlinePhone || "+880 1712-345678";
+  const contactEmail = siteSettings?.general?.contactEmail || "support@bloomcraftnursery.com";
+  const businessHours = siteSettings?.general?.businessHours || "Monday – Sunday: 9:00 AM – 9:00 PM";
+
+  const waRaw =
+    siteSettings?.whatsapp?.whatsappNumber || siteSettings?.general?.hotlinePhone || "";
+  const waClean = waRaw.replace(/[^\d]/g, "");
+  const waDefaultMsg = encodeURIComponent(
+    siteSettings?.whatsapp?.defaultMessage ||
+      `Hello ${brandName}, I have an inquiry regarding plants`
+  );
+  const waHref = waClean ? `https://wa.me/${waClean}?text=${waDefaultMsg}` : "#";
+
+  const doctorCard = pageConfig?.doctorCard;
+
   return (
     <div className="min-h-screen bg-[#FAFBF9] text-slate-800 py-12 md:py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        
         {/* ─── Breadcrumb & Header ────────────────────────────────────── */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50 mb-4"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50 mb-4"
           >
-            <span>🌿</span>
-            <span>We are here to help you grow</span>
+            <Sprout className="w-3.5 h-3.5 text-emerald-700" />
+            <span>{contactPageBadge}</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 15 }}
@@ -139,7 +229,7 @@ export default function ContactPage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight leading-tight"
           >
-            Get in Touch with GreenLeaf
+            {contactPageTitle}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -147,13 +237,12 @@ export default function ContactPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed"
           >
-            Have a question about a plant species, need sick plant care diagnosis, or have an order inquiry? Reach out to our dedicated botanists and support specialists.
+            {contactPageSubtitle}
           </motion.p>
         </div>
 
         {/* ─── Main 2-Column Grid ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-          
           {/* ═════════════════════════════════════════════════════════════════
               LEFT COLUMN: CONTACT INFO & CHANNELS
           ═════════════════════════════════════════════════════════════════ */}
@@ -164,77 +253,71 @@ export default function ContactPage() {
             className="lg:col-span-5 space-y-6"
           >
             {/* Primary Details Card */}
-            <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-sm p-8 sm:p-10 space-y-6">
+            <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-6">
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-                <CustomerServiceOutlined className="text-[#2D6A4F]" />
-                Customer Support Hub
+                <Headphones className="w-5 h-5 text-[#2D6A4F]" />
+                <span>Customer Support Hub</span>
               </h2>
 
               <div className="space-y-5 text-sm">
                 {/* Address */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center text-lg shrink-0 mt-0.5">
-                    <EnvironmentOutlined />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">GreenLeaf Nursery & Greenhouse</h3>
+                    <h3 className="font-bold text-slate-900">{brandName} Nursery &amp; Greenhouse</h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-0.5">
-                      Plot #12, Road #4, Sector 7, Uttara, Dhaka-1230, Bangladesh
+                      {storeAddress}
                     </p>
                     <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/50">
-                      Central Plant Display & Greenhouse
+                      Central Display &amp; Plant Care Center
                     </span>
                   </div>
                 </div>
 
                 {/* Hotline */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center text-lg shrink-0 mt-0.5">
-                    <PhoneOutlined />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900">Direct Support Hotline</h3>
                     <a
-                      href="tel:+8801712345678"
+                      href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
                       className="text-[#2D6A4F] hover:text-[#1B4332] font-bold text-sm block mt-0.5 transition-colors"
                     >
-                      +880 1712-345678
+                      {hotlinePhone}
                     </a>
-                    <p className="text-xs text-slate-500">Toll-free customer guidance & voice support</p>
+                    <p className="text-xs text-slate-500">Toll-free customer guidance &amp; voice support</p>
                   </div>
                 </div>
 
                 {/* Email */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center text-lg shrink-0 mt-0.5">
-                    <MailOutlined />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <Mail className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900">Official Email Inquiries</h3>
                     <a
-                      href="mailto:support@greenleafnursery.com"
+                      href={`mailto:${contactEmail}`}
                       className="text-[#2D6A4F] hover:underline font-semibold text-xs sm:text-sm block mt-0.5"
                     >
-                      support@greenleafnursery.com
-                    </a>
-                    <a
-                      href="mailto:hello@greenleafnursery.com"
-                      className="text-slate-500 hover:underline text-xs block"
-                    >
-                      hello@greenleafnursery.com
+                      {contactEmail}
                     </a>
                   </div>
                 </div>
 
                 {/* Opening Hours */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center text-lg shrink-0 mt-0.5">
-                    <ClockCircleOutlined />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">Nursery & Service Hours</h3>
+                    <h3 className="font-bold text-slate-900">Nursery &amp; Service Hours</h3>
                     <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
-                      Monday – Sunday: 9:00 AM – 9:00 PM
+                      {businessHours}
                     </p>
                     <p className="text-xs text-slate-500">Open 7 days a week including public holidays</p>
                   </div>
@@ -244,38 +327,43 @@ export default function ContactPage() {
               {/* Direct WhatsApp Callout */}
               <div className="pt-4 border-t border-emerald-100/60">
                 <a
-                  href="https://wa.me/8801712345678?text=Hello%20GreenLeaf%20Nursery,%20I%20have%20an%20inquiry%20regarding%20plants"
+                  href={waHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-sm hover:shadow-md transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-xs hover:shadow-md transition-all duration-200"
                 >
-                  <WhatsAppOutlined className="text-xl" />
+                  <MessageCircle className="w-4 h-4" />
                   <span>Chat on WhatsApp (Instant Reply)</span>
                 </a>
                 <p className="text-center text-[11px] text-slate-400 mt-2">
-                  Average WhatsApp response time: &lt; 15 minutes
+                  Average response time: &lt; 15 minutes
                 </p>
               </div>
             </div>
 
             {/* Plant Doctor Consultation Card */}
-            <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-3xl p-6 sm:p-8 shadow-xs">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-200/60 text-[#2D6A4F] flex items-center justify-center text-2xl shrink-0 shadow-2xs">
-                  🩺
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900">Free Plant Doctor Consultation</h3>
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
-                    Have a plant showing yellow leaves, pests, or drooping stems? Send clear photos to our WhatsApp or attach details in this form for free advice from our nursery botanists.
-                  </p>
-                  <div className="mt-3 flex items-center gap-2 text-xs text-emerald-800 font-medium">
-                    <SafetyCertificateOutlined />
-                    <span>100% Free Lifetime Horticultural Support</span>
+            {doctorCard?.isEnabled !== false && (
+              <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-3xl p-6 sm:p-8 shadow-xs">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-200/60 text-[#2D6A4F] flex items-center justify-center shrink-0 shadow-2xs">
+                    <Stethoscope className="w-6 h-6 text-[#2D6A4F]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">
+                      {doctorCard?.title || "Free Plant Doctor Consultation"}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                      {doctorCard?.description ||
+                        "Have a plant showing yellow leaves, pests, or drooping stems? Send clear photos to our WhatsApp or attach details in this form for free advice from our nursery botanists."}
+                    </p>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-emerald-800 font-medium">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                      <span>{doctorCard?.buttonText || "100% Free Lifetime Horticultural Support"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </motion.div>
 
           {/* ═════════════════════════════════════════════════════════════════
@@ -287,8 +375,7 @@ export default function ContactPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="lg:col-span-7"
           >
-            <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-sm p-8 sm:p-10 relative">
-              
+            <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 relative">
               {/* Success Notification Banner */}
               {submittedSuccess && (
                 <motion.div
@@ -296,7 +383,7 @@ export default function ContactPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3"
                 >
-                  <CheckCircleOutlined className="text-xl text-emerald-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-bold text-emerald-900">
                       Message Dispatched to Nursery Desk!
@@ -381,7 +468,7 @@ export default function ContactPage() {
                         }`}
                       />
                       {BD_PHONE_REGEX.test(form.phone) && (
-                        <CheckCircleOutlined className="absolute right-3.5 top-3.5 text-emerald-600 text-sm" />
+                        <CheckCircle2 className="absolute right-3.5 top-3.5 text-emerald-600 w-4 h-4" />
                       )}
                     </div>
                     {errors.phone ? (
@@ -479,7 +566,7 @@ export default function ContactPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3.5 px-6 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] active:scale-[0.99] text-white font-medium text-sm tracking-wide shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] active:scale-[0.99] text-white font-medium text-sm tracking-wide shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
@@ -488,21 +575,20 @@ export default function ContactPage() {
                     </>
                   ) : (
                     <>
-                      <SendOutlined className="text-base" />
-                      <span>Send Message (বার্তা পাঠান)</span>
+                      <Send className="w-4 h-4" />
+                      <span>Send Message</span>
                     </>
                   )}
                 </button>
 
-                <p className="text-center text-xs text-slate-500 pt-1">
-                  🔒 We respect your privacy. Your phone and email are safe and never shared.
+                <p className="text-center text-xs text-slate-500 pt-1 flex items-center justify-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>We respect your privacy. Your phone and email are safe and never shared.</span>
                 </p>
               </form>
             </div>
           </motion.div>
-
         </div>
-
       </div>
     </div>
   );

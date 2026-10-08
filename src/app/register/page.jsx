@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { App } from "antd";
+import { Sprout } from "lucide-react";
 import {
   UserOutlined, MailOutlined, LockOutlined, LoadingOutlined, ArrowLeftOutlined,
   EyeOutlined, EyeInvisibleOutlined,
@@ -37,6 +38,18 @@ function GoogleIcon({ className = "w-5 h-5" }) {
 export default function RegisterPage() {
   const router = useRouter();
   const { message } = App.useApp();
+
+  const [brandName, setBrandName] = useState("MSH BloomCraft");
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general?.siteName) setBrandName(parsed.general.siteName);
+      }
+    } catch {}
+  }, []);
 
   const [form, setForm] = useState({
     name: "",
@@ -92,7 +105,7 @@ export default function RegisterPage() {
         throw new Error(data.message || "Failed to create account");
       }
 
-      message.success("Account created successfully! 🌿");
+      message.success("Account created successfully!");
 
       // Auto sign-in with the new credentials
       const signInRes = await signIn("credentials", {
@@ -122,7 +135,7 @@ export default function RegisterPage() {
           href="/"
           className="inline-flex items-center gap-2 text-sm font-medium text-[#4B5563] hover:text-[#2D6A4F] transition-colors"
         >
-          <ArrowLeftOutlined /> Back to GreenLeaf Nursery
+          <ArrowLeftOutlined /> Back to {brandName}
         </Link>
       </div>
 
@@ -135,14 +148,14 @@ export default function RegisterPage() {
         >
           {/* Brand header */}
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-3xl mx-auto mb-3 shadow-md shadow-green-900/15 text-white">
-              🌱
+            <div className="w-14 h-14 rounded-2xl bg-[#2D6A4F] flex items-center justify-center mx-auto mb-3 shadow-md shadow-green-900/15 text-white">
+              <Sprout className="w-7 h-7" />
             </div>
             <h1 className="text-2xl font-black text-[#1A2E22] tracking-tight">
               Create an Account
             </h1>
             <p className="text-sm text-[#6B7280] mt-1">
-              Join GreenLeaf Nursery to track orders and save plant favorites
+              Join {brandName} to track orders and save plant favorites
             </p>
           </div>
 
@@ -152,7 +165,7 @@ export default function RegisterPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold"
             >
-              ⚠️ {error}
+              {error}
             </motion.div>
           )}
 

@@ -1,108 +1,61 @@
 import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
-import Blog from "@/models/Blog";
 import Category from "@/models/Category";
+import Blog from "@/models/Blog";
 
-export const revalidate = 3600; // Revalidate sitemap every hour
+export const revalidate = 3600; // Cache and revalidate sitemap every hour
 
 export default async function sitemap() {
   const baseUrl = "https://my-nursery-flame.vercel.app";
   const now = new Date();
 
-  // Static core routes
+  // 1. Guaranteed Static Routes (Always available even if DB fails)
   const staticRoutes = [
-    {
-      url: `${baseUrl}`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/collections`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/track-order`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/refund`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
+    { url: `${baseUrl}`, lastModified: now, changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/collections`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/track-order`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/refund`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
-
-  let productRoutes = [];
-  let blogRoutes = [];
-  let categoryRoutes = [];
 
   try {
     await dbConnect();
 
-    // Query active products
-    const products = await Product.find({}, "_id updatedAt createdAt").lean();
-    if (Array.isArray(products)) {
-      productRoutes = products.map((item) => ({
-        url: `${baseUrl}/products/${item._id}`,
-        lastModified: item.updatedAt ? new Date(item.updatedAt) : now,
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
-    }
+    const [products, categories, blogs] = await Promise.all([
+      Product.find({}, "_id updatedAt").lean(),
+      Category.find({}, "slug updatedAt").lean(),
+      Blog.find({ status: "published" }, "slug updatedAt").lean(),
+    ]);
 
-    // Query published blogs
-    const blogs = await Blog.find({}, "slug updatedAt createdAt").lean();
-    if (Array.isArray(blogs)) {
-      blogRoutes = blogs.map((item) => ({
-        url: `${baseUrl}/blog/${item.slug}`,
-        lastModified: item.updatedAt ? new Date(item.updatedAt) : now,
-        changeFrequency: "weekly",
-        priority: 0.7,
-      }));
-    }
+    const productRoutes = (products || []).map((p) => ({
+      url: `${baseUrl}/products/${p._id}`,
+      lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+      changeFrequency: "daily",
+      priority: 0.8,
+    }));
 
-    // Query categories
-    const categories = await Category.find({}, "slug updatedAt createdAt").lean();
-    if (Array.isArray(categories)) {
-      categoryRoutes = categories.map((item) => ({
-        url: `${baseUrl}/collections?category=${item.slug}`,
-        lastModified: item.updatedAt ? new Date(item.updatedAt) : now,
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
-    }
-  } catch (error) {
-    console.error("Error generating dynamic sitemap from MongoDB:", error);
+    const categoryRoutes = (categories || []).map((c) => ({
+      url: `${baseUrl}/collections/${c.slug}`,
+      lastModified: c.updatedAt ? new Date(c.updatedAt) : now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
+
+    const blogRoutes = (blogs || []).map((b) => ({
+      url: `${baseUrl}/blog/${b.slug}`,
+      lastModified: b.updatedAt ? new Date(b.updatedAt) : now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
+
+    return [...staticRoutes, ...productRoutes, ...categoryRoutes, ...blogRoutes];
+  } catch (err) {
+    console.error("Sitemap DB fetch error:", err);
+    // Return static routes fallback so Google Search Console NEVER sees a 500 error!
+    return staticRoutes;
   }
-
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...blogRoutes];
 }

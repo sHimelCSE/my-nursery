@@ -54,6 +54,24 @@ export default function BlogDetailPage() {
     // fallback safe
   }
 
+  const [siteName, setSiteName] = useState("MSH BloomCraft");
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("app_site_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.general?.siteName) setSiteName(parsed.general.siteName);
+      }
+    } catch (e) {}
+
+    const handleUpdate = (e) => {
+      if (e?.detail?.general?.siteName) setSiteName(e.detail.general.siteName);
+    };
+    window.addEventListener("siteSettingsUpdated", handleUpdate);
+    return () => window.removeEventListener("siteSettingsUpdated", handleUpdate);
+  }, []);
+
   useEffect(() => {
     if (!slug) return;
     fetchBlogDetails();
@@ -233,7 +251,7 @@ export default function BlogDetailPage() {
               </div>
               <div className="text-left">
                 <p className="text-sm font-extrabold text-[#1C2B1E] leading-tight">
-                  {blog.author?.name || "GreenLeaf Botanist"}
+                  {blog.author?.name || "BloomCraft Botanist"}
                 </p>
                 <p className="text-xs text-gray-500 leading-tight">
                   {blog.author?.role || "Horticulture Specialist"}
@@ -507,7 +525,7 @@ export default function BlogDetailPage() {
           </Link>
 
           <p className="text-xs text-gray-400 text-center sm:text-right">
-            GreenLeaf Botanical Studio · Horticultural Editorial Desk
+            {siteName} · Horticultural Editorial Desk
           </p>
         </div>
       </article>
