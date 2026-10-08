@@ -59,8 +59,9 @@ export const metadata: Metadata = {
       "Premium botanical sanctuary providing healthy acclimatized house plants, bonsai specimens, organic potting mediums, and modern planters across Bangladesh.",
   },
   verification: {
-    google: "h0iY9eD-3K79mXf6G0HgJAgqtSwrCuweweUOlcthHkg",
+    google: "lckpvS4U3i_DIG-uJPzQdq4_oKQgNv_NFgdVfRYhSnk",
   },
+
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
