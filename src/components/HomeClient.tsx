@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ import HeroSlider from "@/components/HeroSlider";
 import BotanicalCategorySection from "@/components/BotanicalCategorySection";
 import BotanicalDealsSection from "@/components/BotanicalDealsSection";
 import TopRankingsSection from "@/components/TopRankingsSection";
+import BlogSection from "@/components/BlogSection";
 import GuaranteeStripSection from "@/components/GuaranteeStripSection";
 import { DEFAULT_HOMEPAGE_CONFIG } from "@/constants/defaultHomepageConfig";
 import ProductCard from "@/components/ProductCard";
@@ -118,7 +119,7 @@ export default function HomeClient() {
   const [customSections, setCustomSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("all");
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(0);
   const [query, setQuery] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState<any | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState("");
@@ -344,28 +345,78 @@ export default function HomeClient() {
   // ─── Derived datasets ───────────────────────────────────────────────────────
   const dealsProducts = products.length > 0 ? products.slice(0, 4) : DEAL_PLACEHOLDERS;
 
-  const gridProducts = (() => {
-    const list = [...products];
-    if (activeTab === "new") {
-      list.sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-      );
-    } else if (activeTab === "best") {
-      list.sort((a, b) => {
-        const salesA = a.sold ?? a.salesCount ?? 0;
-        const salesB = b.sold ?? b.salesCount ?? 0;
-        if (salesB !== salesA) return salesB - salesA;
-        const ratingA = a.averageRating ?? a.rating ?? 0;
-        const ratingB = b.averageRating ?? b.rating ?? 0;
-        if (ratingB !== ratingA) return ratingB - ratingA;
-        const reviewsA = a.reviewCount ?? a.numReviews ?? 0;
-        const reviewsB = b.reviewCount ?? b.numReviews ?? 0;
-        return reviewsB - reviewsA;
-      });
+  const arrivalTabs = useMemo(() => {
+    if (
+      Array.isArray(homepageConfig?.newArrivals?.tabs) &&
+      homepageConfig.newArrivals.tabs.length > 0
+    ) {
+      return homepageConfig.newArrivals.tabs;
     }
-    return list.slice(0, 6);
-  })();
+    return DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs;
+  }, [homepageConfig?.newArrivals?.tabs]);
+
+  const safeTabIndex = Math.min(activeTabIndex, Math.max(0, arrivalTabs.length - 1));
+  const currentTab = arrivalTabs[safeTabIndex] || arrivalTabs[0];
+  const showSpotlightBanner = homepageConfig?.newArrivals?.showSpotlightBanner !== false;
+
+  const gridProducts = useMemo(() => {
+    let list = [...products];
+
+    if (currentTab?.sourceType === "category") {
+      const cat = currentTab.categoryId;
+      const catId = typeof cat === "object" && cat ? (cat._id || cat.id) : cat;
+      const catSlug = typeof cat === "object" && cat ? (cat.slug || "") : "";
+      const catName = typeof cat === "object" && cat ? (cat.name || "") : "";
+
+      list = list.filter((p) => {
+        if (!p) return false;
+        const pCategory = (p.category || "").toString().toLowerCase().trim();
+        const pCatId = p.categoryId
+          ? typeof p.categoryId === "object"
+            ? p.categoryId._id || p.categoryId.id
+            : p.categoryId
+          : null;
+
+        // Match category ID if present
+        if (catId && pCatId && String(pCatId) === String(catId)) return true;
+
+        // Match category slug or name
+        if (catSlug && pCategory === catSlug.toLowerCase().trim()) return true;
+        if (catName && pCategory === catName.toLowerCase().trim()) return true;
+
+        if (
+          p.categorySlug &&
+          catSlug &&
+          p.categorySlug.toLowerCase().trim() === catSlug.toLowerCase().trim()
+        )
+          return true;
+
+        return false;
+      });
+    } else {
+      const filter = currentTab?.presetFilter || "all";
+      if (filter === "new_arrivals") {
+        list.sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+      } else if (filter === "best_sellers") {
+        list.sort((a, b) => {
+          const salesA = a.sold ?? a.salesCount ?? 0;
+          const salesB = b.sold ?? b.salesCount ?? 0;
+          if (salesB !== salesA) return salesB - salesA;
+          const ratingA = a.averageRating ?? a.rating ?? 0;
+          const ratingB = b.averageRating ?? b.rating ?? 0;
+          if (ratingB !== ratingA) return ratingB - ratingA;
+          const reviewsA = a.reviewCount ?? a.numReviews ?? 0;
+          const reviewsB = b.reviewCount ?? b.numReviews ?? 0;
+          return reviewsB - reviewsA;
+        });
+      }
+    }
+
+    return showSpotlightBanner ? list.slice(0, 6) : list.slice(0, 8);
+  }, [products, currentTab, showSpotlightBanner]);
 
   const scrollToProducts = (slug: string) => {
     setActiveCategory(slug);
@@ -501,21 +552,25 @@ export default function HomeClient() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Product filters">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${activeTab === tab.id
-                    ? "bg-[#1E3F20] text-white shadow-xs"
-                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              {arrivalTabs.map((tab: any, idx: number) => {
+                const isActive = safeTabIndex === idx;
+                return (
+                  <button
+                    key={tab._id || tab.label || idx}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTabIndex(idx)}
+                    className={`px-5 py-2 rounded-full font-medium text-sm transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-[#1E3F20] text-white shadow-xs"
+                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -538,57 +593,98 @@ export default function HomeClient() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left Spotlight Banner */}
-            <div className="lg:col-span-4 relative overflow-hidden rounded-3xl min-h-[480px] lg:min-h-full bg-[#1E3F20] flex flex-col justify-between p-7 group shadow-sm">
-              <SafeImage
-                src={homepageConfig?.newArrivals?.spotlightBanner?.imageUrl || "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1000&q=85"}
-                fallback={PRODUCT_FALLBACK}
-                alt={homepageConfig?.newArrivals?.spotlightBanner?.title || "Spotlight Specimen"}
-                fill
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              {/* High-contrast gradient overlay ensuring 100% text legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30 pointer-events-none" />
+          {showSpotlightBanner ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* Left Spotlight Banner */}
+              <div className="lg:col-span-4 relative overflow-hidden rounded-3xl min-h-[480px] lg:min-h-full bg-[#1E3F20] flex flex-col justify-between p-7 group shadow-sm">
+                <SafeImage
+                  src={homepageConfig?.newArrivals?.spotlightBanner?.imageUrl || "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1000&q=85"}
+                  fallback={PRODUCT_FALLBACK}
+                  alt={homepageConfig?.newArrivals?.spotlightBanner?.title || "Spotlight Specimen"}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                {/* High-contrast gradient overlay ensuring 100% text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
 
-              <div className="relative z-10 space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-500/30">
-                    {homepageConfig?.newArrivals?.spotlightBanner?.badge || "FEATURED SPECIMEN"}
-                  </span>
-                  {homepageConfig?.newArrivals?.spotlightBanner?.price && (
-                    <span className="inline-block text-xs font-bold text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/25">
-                      {homepageConfig.newArrivals.spotlightBanner.price}
+                <div className="relative z-10 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-500/30">
+                      {homepageConfig?.newArrivals?.spotlightBanner?.badge || "FEATURED SPECIMEN"}
                     </span>
+                    {homepageConfig?.newArrivals?.spotlightBanner?.price && (
+                      <span className="inline-block text-xs font-bold text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/25">
+                        {homepageConfig.newArrivals.spotlightBanner.price}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-2xl lg:text-3xl font-bold tracking-tight text-white leading-tight drop-shadow-sm">
+                    {homepageConfig?.newArrivals?.spotlightBanner?.title || "Buy a great Coconut Bonsai"}
+                  </h3>
+                  {homepageConfig?.newArrivals?.spotlightBanner?.subtitle && (
+                    <p className="text-xs sm:text-sm text-gray-200 leading-relaxed drop-shadow-sm line-clamp-3">
+                      {homepageConfig.newArrivals.spotlightBanner.subtitle}
+                    </p>
                   )}
                 </div>
-                <h3 className="text-2xl lg:text-3xl font-bold tracking-tight text-white leading-tight drop-shadow-sm">
-                  {homepageConfig?.newArrivals?.spotlightBanner?.title || "Buy a great Coconut Bonsai"}
-                </h3>
-                {homepageConfig?.newArrivals?.spotlightBanner?.subtitle && (
-                  <p className="text-xs sm:text-sm text-gray-200 leading-relaxed drop-shadow-sm line-clamp-3">
-                    {homepageConfig.newArrivals.spotlightBanner.subtitle}
-                  </p>
+
+                <div className="relative z-10 pt-6">
+                  <Link
+                    href={homepageConfig?.newArrivals?.spotlightBanner?.buttonUrl || "/collections"}
+                    className="inline-flex items-center gap-2 bg-white text-gray-900 hover:bg-emerald-50 px-6 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all"
+                  >
+                    {homepageConfig?.newArrivals?.spotlightBanner?.buttonText || "Buy Now"}
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Product grid with reactive tabs and smooth transition */}
+              <div className="lg:col-span-8">
+                {loading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-5">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl border border-gray-200/70 p-3 animate-pulse">
+                        <div className="aspect-square bg-[#EBF0E6] rounded-xl" />
+                        <div className="h-4 bg-gray-100 rounded-full w-3/4 mt-4" />
+                        <div className="h-3 bg-gray-100 rounded-full w-1/2 mt-3" />
+                      </div>
+                    ))}
+                  </div>
+                ) : gridProducts.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-gray-200/70 p-8">
+                    <Sprout className="w-12 h-12 text-[#1E3F20] mx-auto mb-3" strokeWidth={1.5} />
+                    <h4 className="text-base font-semibold text-[#1C2B1E]">No items found</h4>
+                    <p className="text-sm text-[#5A6B5C] mt-1">Try selecting another category or tab.</p>
+                  </div>
+                ) : (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={safeTabIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-5"
+                    >
+                      {gridProducts.map((product, idx) => (
+                        <ProductCard
+                          key={product._id || product.id || idx}
+                          product={product}
+                          onOpen={() => setQuickViewProduct(product)}
+                        />
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
                 )}
               </div>
-
-              <div className="relative z-10 pt-6">
-                <Link
-                  href={homepageConfig?.newArrivals?.spotlightBanner?.buttonUrl || "/collections"}
-                  className="inline-flex items-center gap-2 bg-white text-gray-900 hover:bg-emerald-50 px-6 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all group-hover:gap-3"
-                >
-                  <span>{homepageConfig?.newArrivals?.spotlightBanner?.buttonText || "Buy Now"}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
             </div>
-
-            {/* Product grid with reactive tabs and smooth transition */}
-            <div className="lg:col-span-8">
+          ) : (
+            <div className="w-full">
               {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-5">
-                  {[...Array(6)].map((_, i) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => (
                     <div key={i} className="bg-white rounded-2xl border border-gray-200/70 p-3 animate-pulse">
                       <div className="aspect-square bg-[#EBF0E6] rounded-xl" />
                       <div className="h-4 bg-gray-100 rounded-full w-3/4 mt-4" />
@@ -605,51 +701,25 @@ export default function HomeClient() {
               ) : (
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={activeTab}
+                    key={safeTabIndex}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-5"
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
                   >
-                    {gridProducts.map((product, idx) => {
-                      const inStock = (product.stock_quantity ?? 1) > 0;
-                      const hasDiscount = Boolean(product.discount && Number(product.discount) > 0);
-                      const isNewArrival =
-                        activeTab === "new" ||
-                        Boolean(
-                          product.createdAt &&
-                            Date.now() - new Date(product.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000
-                        );
-                      const badge = hasDiscount ? "SALE" : isNewArrival ? "NEW" : idx % 2 === 0 ? "NEW" : "SALE";
-                      const discountVal = hasDiscount
-                        ? Number(product.discount)
-                        : badge === "SALE"
-                        ? DISCOUNTS[idx % DISCOUNTS.length]
-                        : null;
-
-                      return (
-                        <ProductCard
-                          key={product._id || product.id || idx}
-                          title={product.title}
-                          image={getSafeProductImage(product)}
-                          fallback={getFallbackFor(product)}
-                          price={product.price}
-                          badge={badge}
-                          discount={discountVal}
-                          inStock={inStock}
-                          wished={mounted ? isInWishlist(product._id || product.id) : false}
-                          onToggleWishlist={() => toggleWishlist(product)}
-                          onOpen={() => setQuickViewProduct(product)}
-                          onAdd={(e: React.MouseEvent) => handleAddToCart(product, e)}
-                        />
-                      );
-                    })}
+                    {gridProducts.map((product, idx) => (
+                      <ProductCard
+                        key={product._id || product.id || idx}
+                        product={product}
+                        onOpen={() => setQuickViewProduct(product)}
+                      />
+                    ))}
                   </motion.div>
                 </AnimatePresence>
               )}
             </div>
-          </div>
+          )}
         </section>
       )}
 
@@ -663,87 +733,9 @@ export default function HomeClient() {
         <TopRankingsSection data={homepageConfig?.topRankings} onSelectCategory={scrollToProducts} />
       )}
 
-      {/* ─── 7. Latest Blog Guides ────────────────────────────────────────── */}
+      {/* ─── 8. Latest Plant Care Guides & Blog ────────────────────────────── */}
       {homepageConfig?.blogSection?.isEnabled !== false && (
-        <section id="blog-guides" className="section-blog-guides max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 scroll-mt-28">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5C7F57]">
-                Knowledge Base
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-[#1C2B1E] mt-2">
-                {homepageConfig?.blogSection?.title || "Latest Plant Care Guides"}
-              </h2>
-              {homepageConfig?.blogSection?.subtitle && (
-                <p className="text-sm text-[#5A6B5C] mt-1">
-                  {homepageConfig.blogSection.subtitle}
-                </p>
-              )}
-            </div>
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 text-sm font-medium text-[#1E3F20] border border-gray-300 bg-white px-5 py-2.5 rounded-full hover:bg-gray-50 transition-colors self-start sm:self-auto cursor-pointer"
-            >
-              <span>All Articles</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
-            {(latestBlogs.length > 0 ? latestBlogs : BLOG_POSTS).map((post: any) => {
-              const postSlug = post.slug || `guide-${post.id}`;
-              const postDate = post.createdAt
-                ? new Date(post.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : (post.date || "Botanical Guide");
-              const authorName = post.author?.name || post.author || "BloomCraft Botanist";
-              const postImage = post.coverImage || post.image || PRODUCT_FALLBACK;
-
-              return (
-                <Link
-                  key={post._id || post.id || postSlug}
-                  href={`/blog/${postSlug}`}
-                  className="blog-card group bg-white rounded-2xl border border-gray-200/70 p-3 hover:shadow-[0_12px_32px_-12px_rgba(28,43,30,0.18)] hover:-translate-y-1 transition-all duration-300 flex flex-col cursor-pointer"
-                >
-                  <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-[#EBF0E6]">
-                    <SafeImage
-                      src={postImage}
-                      fallback={PRODUCT_FALLBACK}
-                      alt={post.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <span className="absolute top-2.5 left-2.5 bg-[#1E3F20] text-white text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xs">
-                      {post.category || "Plant Care"}
-                    </span>
-                  </div>
-                  <div className="p-3 flex flex-col flex-1 gap-2.5">
-                    <div className="flex items-center gap-4 text-xs text-[#5A6B5C]">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" /> {postDate}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> {post.readTime || "5 min read"}
-                      </span>
-                    </div>
-                    <h3 className="font-semibold text-[15px] text-[#1C2B1E] leading-snug group-hover:text-[#2D6A4F] transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-[#5A6B5C] leading-relaxed line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                    <div className="mt-auto pt-3 flex items-center justify-between text-sm">
-                      <span className="text-xs font-medium text-[#5A6B5C]">{authorName}</span>
-                      <span className="inline-flex items-center gap-1 font-medium text-[#1E3F20] group-hover:gap-2 transition-all">
-                        Read <ArrowRight className="w-4 h-4" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <BlogSection data={homepageConfig?.blogSection} />
       )}
 
       {/* ─── 8. Newsletter Section ─────────────────────────────────────────── */}

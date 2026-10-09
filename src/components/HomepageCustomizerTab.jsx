@@ -41,7 +41,16 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  FolderTree,
+  Sprout,
+  Flame,
+  Trophy,
+  Pin,
+  RotateCcw,
+  CreditCard,
+  Star,
 } from "lucide-react";
+import SafeImage from "@/components/SafeImage";
 import { DEFAULT_HOMEPAGE_CONFIG } from "@/constants/defaultHomepageConfig";
 
 const PERK_ICON_OPTIONS = [
@@ -60,6 +69,26 @@ const PERK_ICON_COMPONENTS = {
   Gift,
   ShieldCheck,
   Truck,
+};
+
+const GUARANTEE_ICON_OPTIONS = [
+  { value: "ShieldCheck", label: "ShieldCheck (Quality Guarantee)" },
+  { value: "Package", label: "Package (Eco Bio Packaging)" },
+  { value: "Truck", label: "Truck (Doorstep Safe Delivery)" },
+  { value: "Headphones", label: "Headphones (Botanical Advice)" },
+  { value: "RotateCcw", label: "RotateCcw (Replacement Protection)" },
+  { value: "CreditCard", label: "CreditCard (Secure Payment)" },
+  { value: "Leaf", label: "Leaf (100% Organic & Fresh)" },
+];
+
+const GUARANTEE_ICON_COMPONENTS = {
+  ShieldCheck,
+  Package,
+  Truck,
+  Headphones,
+  RotateCcw,
+  CreditCard,
+  Leaf,
 };
 
 export default function HomepageCustomizerTab({ onNavigateTab }) {
@@ -103,6 +132,24 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [dealProductSearch, setDealProductSearch] = useState("");
 
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await fetch("/api/categories");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.categories || data.data)) {
+        setCategories(data.categories || data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load categories for collection selector:", err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
   const fetchAllProducts = async () => {
     try {
       setLoadingProducts(true);
@@ -118,9 +165,29 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
     }
   };
 
+  const [allBlogs, setAllBlogs] = useState([]);
+  const [loadingBlogs, setLoadingBlogs] = useState(false);
+
+  const fetchBlogs = async () => {
+    try {
+      setLoadingBlogs(true);
+      const res = await fetch("/api/blogs?limit=50");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.blogs)) {
+        setAllBlogs(data.blogs);
+      }
+    } catch (err) {
+      console.error("Failed to load blogs for customizer:", err);
+    } finally {
+      setLoadingBlogs(false);
+    }
+  };
+
   useEffect(() => {
     fetchConfig();
     fetchAllProducts();
+    fetchCategories();
+    fetchBlogs();
   }, []);
 
   const handleToggleDealProduct = (product) => {
@@ -167,6 +234,127 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
       return id !== targetId;
     });
     updateNestedField("dealsSection.dealProductIds", filtered);
+  };
+
+  const handleAddArrivalTab = () => {
+    const currentTabs = Array.isArray(config.newArrivals?.tabs)
+      ? config.newArrivals.tabs
+      : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs;
+    if (currentTabs.length >= 5) {
+      antdMessage.warning("Maximum 5 tabs allowed for Section #5.");
+      return;
+    }
+    const newTab = {
+      label: `Tab ${currentTabs.length + 1}`,
+      sourceType: "preset",
+      presetFilter: "all",
+      categoryId: null,
+    };
+    updateNestedField("newArrivals.tabs", [...currentTabs, newTab]);
+  };
+
+  const handleRemoveArrivalTab = (idx) => {
+    const currentTabs = Array.isArray(config.newArrivals?.tabs)
+      ? config.newArrivals.tabs
+      : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs;
+    if (currentTabs.length <= 1) {
+      antdMessage.warning("At least 1 tab is required for Section #5.");
+      return;
+    }
+    const updated = currentTabs.filter((_, i) => i !== idx);
+    updateNestedField("newArrivals.tabs", updated);
+  };
+
+  const handleUpdateArrivalTab = (idx, field, value) => {
+    const currentTabs = Array.isArray(config.newArrivals?.tabs)
+      ? config.newArrivals.tabs
+      : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs;
+    const updated = [...currentTabs];
+    updated[idx] = {
+      ...updated[idx],
+      [field]: value,
+    };
+    if (field === "sourceType") {
+      if (value === "category") {
+        const defaultCatId = categories[0]?._id
+          ? (categories[0]._id.toString ? categories[0]._id.toString() : categories[0]._id)
+          : null;
+        updated[idx].categoryId = updated[idx].categoryId || defaultCatId;
+      } else {
+        updated[idx].presetFilter = updated[idx].presetFilter || "all";
+        updated[idx].categoryId = null;
+      }
+    }
+    updateNestedField("newArrivals.tabs", updated);
+  };
+
+  const getRankingColumn = (cIdx) => {
+    const defaultCol = DEFAULT_HOMEPAGE_CONFIG.topRankings?.columns?.[cIdx];
+    const existingCol = config.topRankings?.columns?.[cIdx];
+    return {
+      title: existingCol?.title ?? defaultCol?.title ?? `Column ${cIdx + 1}`,
+      browseUrl: existingCol?.browseUrl ?? defaultCol?.browseUrl ?? "/collections",
+      items: [0, 1, 2].map((iIdx) => {
+        const defaultItem = defaultCol?.items?.[iIdx];
+        const existingItem = existingCol?.items?.[iIdx];
+        const rawPid = existingItem?.productId?._id
+          ? existingItem.productId._id.toString()
+          : existingItem?.productId
+          ? existingItem.productId.toString()
+          : "";
+        return {
+          rank: iIdx + 1,
+          badge: existingItem?.badge ?? defaultItem?.badge ?? "Featured",
+          productId: rawPid,
+        };
+      }),
+    };
+  };
+
+  const updateRankingColumnField = (colIdx, field, value) => {
+    setConfig((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev || {}));
+      if (!copy.topRankings) copy.topRankings = {};
+      if (!Array.isArray(copy.topRankings.columns) || copy.topRankings.columns.length < 3) {
+        copy.topRankings.columns = JSON.parse(JSON.stringify(DEFAULT_HOMEPAGE_CONFIG.topRankings.columns));
+      }
+      copy.topRankings.columns[colIdx][field] = value;
+      return copy;
+    });
+  };
+
+  const updateRankingItemField = (colIdx, itemIdx, field, value) => {
+    setConfig((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev || {}));
+      if (!copy.topRankings) copy.topRankings = {};
+      if (!Array.isArray(copy.topRankings.columns) || copy.topRankings.columns.length < 3) {
+        copy.topRankings.columns = JSON.parse(JSON.stringify(DEFAULT_HOMEPAGE_CONFIG.topRankings.columns));
+      }
+      if (!Array.isArray(copy.topRankings.columns[colIdx].items) || copy.topRankings.columns[colIdx].items.length < 3) {
+        copy.topRankings.columns[colIdx].items = JSON.parse(
+          JSON.stringify(DEFAULT_HOMEPAGE_CONFIG.topRankings.columns[colIdx].items)
+        );
+      }
+      copy.topRankings.columns[colIdx].items[itemIdx][field] = value;
+      return copy;
+    });
+  };
+
+  const updateGuaranteeItem = (index, field, value) => {
+    setConfig((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev || {}));
+      if (!copy.guaranteeStrip) copy.guaranteeStrip = {};
+      if (
+        !Array.isArray(copy.guaranteeStrip.items) ||
+        copy.guaranteeStrip.items.length < 4
+      ) {
+        copy.guaranteeStrip.items = JSON.parse(
+          JSON.stringify(DEFAULT_HOMEPAGE_CONFIG.guaranteeStrip.items)
+        );
+      }
+      copy.guaranteeStrip.items[index][field] = value;
+      return copy;
+    });
   };
 
   const toggleAccordion = (sectionKey) => {
@@ -248,10 +436,32 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
   const handleSave = async () => {
     try {
       setSaving(true);
+
+      const existingFeatured = Array.isArray(config.categoriesSection?.featuredCategoryIds)
+        ? config.categoriesSection.featuredCategoryIds.map((item) =>
+            typeof item === "object" && item?._id ? item._id.toString() : item?.toString() || ""
+          )
+        : [];
+
+      const currentSlots = [
+        existingFeatured[0] || (categories[0]?._id ? categories[0]._id.toString() : ""),
+        existingFeatured[1] || (categories[1]?._id ? categories[1]._id.toString() : ""),
+        existingFeatured[2] || (categories[2]?._id ? categories[2]._id.toString() : ""),
+        existingFeatured[3] || (categories[3]?._id ? categories[3]._id.toString() : ""),
+      ].filter(Boolean);
+
+      const payload = {
+        ...config,
+        categoriesSection: {
+          ...(config.categoriesSection || {}),
+          featuredCategoryIds: currentSlots,
+        },
+      };
+
       const res = await fetch("/api/admin/homepage-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -280,10 +490,11 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
       buttonText: "Shop Collection",
       buttonUrl: "/collections",
       imageUrl: "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=1400&q=85",
+      featuredProductId: null,
       floatingCard: {
-        title: "Monstera Deliciosa",
-        price: "৳450",
-        link: "/products",
+        title: "",
+        price: "",
+        link: "",
       },
     };
     setConfig((prev) => ({
@@ -605,64 +816,157 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                         </div>
                       </div>
 
-                      {/* Floating Card Settings */}
-                      <div className="md:col-span-2 p-3.5 rounded-xl bg-gray-50 border border-gray-200/70 space-y-3">
-                        <p className="text-[11px] font-bold text-gray-700">
-                          Floating Specimen Card Overlay
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Floating Card Settings - Database Product Selector */}
+                      <div className="md:col-span-2 p-4 rounded-2xl bg-emerald-50/40 border border-emerald-100 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                           <div>
-                            <label className="block text-[10px] text-gray-500 mb-0.5">
-                              Card Plant Title
-                            </label>
-                            <input
-                              type="text"
-                              value={slide.floatingCard?.title || ""}
-                              onChange={(e) =>
+                            <div className="flex items-center gap-2">
+                              <Leaf className="w-4 h-4 text-[#2D6A4F]" />
+                              <p className="text-xs font-bold text-[#1A2E22]">
+                                Floating Specimen Product (লাইভ প্রোডাক্ট সিলেক্টর)
+                              </p>
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                              Select an active database product to automatically bind this slide&apos;s floating glass card (title, live price, real star rating, and direct shop link).
+                            </p>
+                          </div>
+                          {slide.featuredProductId && (
+                            <span className="self-start sm:self-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              Database Linked
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 mb-1.5">
+                            Select Featured Product
+                          </label>
+                          <select
+                            value={
+                              slide.featuredProductId?._id
+                                ? slide.featuredProductId._id.toString()
+                                : slide.featuredProductId
+                                ? slide.featuredProductId.toString()
+                                : ""
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const chosen = allProducts.find(
+                                (p) => (p._id?.toString() || p.id?.toString()) === val
+                              );
+                              if (chosen) {
+                                updateNestedField(
+                                  `heroSlider.slides.${sIdx}.featuredProductId`,
+                                  chosen._id.toString()
+                                );
                                 updateNestedField(
                                   `heroSlider.slides.${sIdx}.floatingCard.title`,
-                                  e.target.value
-                                )
-                              }
-                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white"
-                              placeholder="Peace Lily"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-500 mb-0.5">
-                              Card Price
-                            </label>
-                            <input
-                              type="text"
-                              value={slide.floatingCard?.price || ""}
-                              onChange={(e) =>
+                                  chosen.title
+                                );
                                 updateNestedField(
                                   `heroSlider.slides.${sIdx}.floatingCard.price`,
-                                  e.target.value
-                                )
-                              }
-                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white"
-                              placeholder="৳380"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-500 mb-0.5">
-                              Card Product Link
-                            </label>
-                            <input
-                              type="text"
-                              value={slide.floatingCard?.link || ""}
-                              onChange={(e) =>
+                                  `৳${chosen.price}`
+                                );
                                 updateNestedField(
                                   `heroSlider.slides.${sIdx}.floatingCard.link`,
-                                  e.target.value
-                                )
+                                  `/products/${chosen._id}`
+                                );
+                              } else {
+                                updateNestedField(
+                                  `heroSlider.slides.${sIdx}.featuredProductId`,
+                                  null
+                                );
+                                updateNestedField(
+                                  `heroSlider.slides.${sIdx}.floatingCard.title`,
+                                  ""
+                                );
+                                updateNestedField(
+                                  `heroSlider.slides.${sIdx}.floatingCard.price`,
+                                  ""
+                                );
+                                updateNestedField(
+                                  `heroSlider.slides.${sIdx}.floatingCard.link`,
+                                  ""
+                                );
                               }
-                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white"
-                              placeholder="/products"
-                            />
-                          </div>
+                            }}
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 cursor-pointer shadow-2xs"
+                          >
+                            <option value="">-- No Linked Product (Floating Card Disabled) --</option>
+                            {allProducts.map((p) => (
+                              <option key={p._id} value={p._id}>
+                                {p.title} - ৳{p.price}
+                              </option>
+                            ))}
+                          </select>
                         </div>
+
+                        {/* Live Product Preview */}
+                        {(() => {
+                          const currentProdId = slide.featuredProductId?._id
+                            ? slide.featuredProductId._id.toString()
+                            : slide.featuredProductId
+                            ? slide.featuredProductId.toString()
+                            : "";
+                          const boundProd =
+                            allProducts.find(
+                              (p) => (p._id?.toString() || p.id?.toString()) === currentProdId
+                            ) || (typeof slide.featuredProductId === "object" ? slide.featuredProductId : null);
+
+                          if (!boundProd) return null;
+
+                          const img =
+                            (Array.isArray(boundProd.images) && boundProd.images[0]) ||
+                            boundProd.image ||
+                            "";
+
+                          const count = boundProd.reviewCount || 0;
+                          const avg = boundProd.avgRating || boundProd.averageRating || 0;
+
+                          return (
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-emerald-200/80 shadow-2xs">
+                              {img ? (
+                                <SafeImage
+                                  src={img}
+                                  alt={boundProd.title}
+                                  width={48}
+                                  height={48}
+                                  className="w-12 h-12 rounded-lg object-cover border border-emerald-100 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
+                                  <Leaf className="w-5 h-5" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-bold text-gray-900 truncate">
+                                    {boundProd.title}
+                                  </p>
+                                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                                    ৳{boundProd.price}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {count > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                      {avg.toFixed(1)} <span className="text-gray-400 font-normal">({count} reviews)</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[11px] text-gray-400">
+                                      No reviews yet (Unrated)
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-gray-400">•</span>
+                                  <span className="text-[11px] text-[#2D6A4F] font-medium truncate">
+                                    /products/{boundProd._id}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -794,38 +1098,145 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                 </div>
               </div>
 
-              {/* Category Card Notice & Shortcut Button */}
-              <div className="bg-[#EBF0E6]/70 border border-[#2D6A4F]/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white text-[#2D6A4F] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                    <Layers className="w-4 h-4" />
+              {/* Featured 4 Collections Selector */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#EBF0E6] text-[#2D6A4F] flex items-center justify-center shrink-0">
+                      <FolderTree className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-gray-800">
+                          Featured 4 Collections Selector
+                        </h4>
+                        <span className="text-[10px] font-bold text-[#1E3F20] bg-[#EBF0E6] px-2 py-0.5 rounded-full">
+                          Homepage Grid
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Choose exactly which 4 categories are featured on your homepage.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-[#1C2B1E]">
-                      Live Category Database Connection
-                    </h5>
-                    <p className="text-[11px] text-[#5A6B5C] mt-0.5 leading-relaxed">
-                      Category cards are automatically populated from your Category database with live Cloudinary images and real product counts.
-                    </p>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof onNavigateTab === "function") {
+                        onNavigateTab("categories");
+                      } else {
+                        window.dispatchEvent(
+                          new CustomEvent("admin:navigate-tab", { detail: "categories" })
+                        );
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-[#1E3F20] text-white hover:bg-[#152D17] transition-colors cursor-pointer shrink-0 shadow-xs self-start sm:self-auto"
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Manage Categories &amp; Images &rarr;</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof onNavigateTab === "function") {
-                      onNavigateTab("categories");
-                    } else {
-                      window.dispatchEvent(
-                        new CustomEvent("admin:navigate-tab", { detail: "categories" })
-                      );
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-[#1E3F20] text-white hover:bg-[#152D17] transition-colors cursor-pointer shrink-0 shadow-xs self-start sm:self-auto"
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>Manage Categories &amp; Images</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+
+                {/* 4-Column Responsive Grid */}
+                {(() => {
+                  const existingFeatured = Array.isArray(config.categoriesSection?.featuredCategoryIds)
+                    ? config.categoriesSection.featuredCategoryIds.map((item) =>
+                        typeof item === "object" && item?._id ? item._id.toString() : item?.toString() || ""
+                      )
+                    : [];
+
+                  const slot1 = existingFeatured[0] || (categories[0]?._id?.toString() || "");
+                  const slot2 = existingFeatured[1] || (categories[1]?._id?.toString() || "");
+                  const slot3 = existingFeatured[2] || (categories[2]?._id?.toString() || "");
+                  const slot4 = existingFeatured[3] || (categories[3]?._id?.toString() || "");
+                  const currentSlots = [slot1, slot2, slot3, slot4];
+
+                  const handleSlotChange = (slotIndex, newId) => {
+                    const updated = [...currentSlots];
+                    updated[slotIndex] = newId;
+                    updateNestedField("categoriesSection.featuredCategoryIds", updated);
+                  };
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[0, 1, 2, 3].map((slotIdx) => {
+                        const currentVal = currentSlots[slotIdx] || "";
+                        const selectedCat = categories.find(
+                          (c) => (c._id?.toString() || c.id?.toString()) === currentVal
+                        );
+
+                        return (
+                          <div
+                            key={`featured-collection-slot-${slotIdx}`}
+                            className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-2xs hover:border-[#2D6A4F]/40 transition-all flex flex-col justify-between space-y-3"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2.5">
+                                <span className="text-[11px] font-extrabold text-[#1E3F20] bg-[#EBF0E6] px-2.5 py-0.5 rounded-full">
+                                  Slot #{slotIdx + 1}
+                                </span>
+                                <span className="text-[10px] font-semibold text-gray-400">
+                                  Card {slotIdx + 1} of 4
+                                </span>
+                              </div>
+
+                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                Category
+                              </label>
+                              <select
+                                value={currentVal}
+                                onChange={(e) => handleSlotChange(slotIdx, e.target.value)}
+                                className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] cursor-pointer"
+                              >
+                                <option value="" disabled>
+                                  Choose category...
+                                </option>
+                                {categories.map((cat) => (
+                                  <option
+                                    key={cat._id?.toString() || cat.slug}
+                                    value={cat._id?.toString() || cat.id?.toString()}
+                                  >
+                                    {cat.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Category Preview Card */}
+                            <div className="bg-[#F2F5ED] rounded-xl p-2.5 border border-[#1E3F20]/10 flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-lg bg-white overflow-hidden relative shrink-0 border border-gray-200/80 flex items-center justify-center p-1">
+                                {selectedCat?.image ? (
+                                  <SafeImage
+                                    src={selectedCat.image}
+                                    fill
+                                    sizes="48px"
+                                    className="object-contain p-1"
+                                    alt={selectedCat.name}
+                                  />
+                                ) : (
+                                  <Sprout className="w-5 h-5 text-[#2D6A4F]" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-[#1C2B1E] truncate">
+                                  {selectedCat?.name || "Select Category"}
+                                </p>
+                                <p className="text-[11px] text-[#5A6B5C] font-medium mt-0.5 truncate">
+                                  {typeof selectedCat?.productCount === "number"
+                                    ? `${selectedCat.productCount}+ Plants`
+                                    : selectedCat?.slug
+                                    ? `/collections/${selectedCat.slug}`
+                                    : "Empty slot"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 4 Perks Customizer (Perks Repeater) */}
@@ -1039,6 +1450,23 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                       }
                       className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
                       placeholder="Seasonal markdowns on our healthiest, nursery-grown favourites."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex items-center justify-between p-3.5 bg-white border border-gray-200/80 rounded-2xl">
+                    <div>
+                      <span className="text-xs font-bold text-gray-700 block">
+                        Show Countdown Clock (কাউন্টডাউন টাইমার অন/অফ)
+                      </span>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Toggle to display or hide the dark countdown clock box on the homepage.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={config.dealsSection?.showCountdown !== false}
+                      onChange={(checked) =>
+                        updateNestedField("dealsSection.showCountdown", checked)
+                      }
                     />
                   </div>
 
@@ -1806,6 +2234,198 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                 </div>
               </div>
 
+              {/* Dynamic Tabs Builder (Max 5 Tabs) */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#1A2E22] uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <span>
+                        Dynamic Tabs Builder ({(Array.isArray(config.newArrivals?.tabs) ? config.newArrivals.tabs : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs).length} / 5 Tabs)
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Curate up to 5 dynamic tabs linked to database categories or automated preset filters.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddArrivalTab}
+                    disabled={(Array.isArray(config.newArrivals?.tabs) ? config.newArrivals.tabs : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs).length >= 5}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EBF0E6] text-[#2D5A27] text-xs font-bold hover:bg-[#dfe7d8] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add New Tab</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3.5">
+                  {(Array.isArray(config.newArrivals?.tabs) ? config.newArrivals.tabs : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs).map((tab, tIdx) => {
+                    const isCategory = tab.sourceType === "category";
+                    const currentCatId =
+                      typeof tab.categoryId === "object" && tab.categoryId?._id
+                        ? tab.categoryId._id.toString()
+                        : tab.categoryId
+                        ? tab.categoryId.toString()
+                        : "";
+
+                    return (
+                      <div
+                        key={tab._id || tIdx}
+                        className="bg-[#FAFBF9] rounded-2xl p-4 border border-gray-200/80 space-y-3"
+                      >
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">
+                              {tIdx + 1}
+                            </span>
+                            <span className="text-xs font-bold text-[#1A2E22]">
+                              Tab {tIdx + 1}: {tab.label || "Untitled Tab"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveArrivalTab(tIdx)}
+                            disabled={
+                              (Array.isArray(config.newArrivals?.tabs)
+                                ? config.newArrivals.tabs
+                                : DEFAULT_HOMEPAGE_CONFIG.newArrivals.tabs
+                              ).length <= 1
+                            }
+                            className="text-red-500 hover:text-red-700 disabled:opacity-40 disabled:cursor-not-allowed p-1 transition-colors cursor-pointer"
+                            title="Remove Tab"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                              Tab Display Label
+                            </label>
+                            <input
+                              type="text"
+                              value={tab.label || ""}
+                              onChange={(e) =>
+                                handleUpdateArrivalTab(tIdx, "label", e.target.value)
+                              }
+                              className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                              placeholder="e.g. Indoor Plants or Special Bonsai"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                              Tab Source Selector
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateArrivalTab(tIdx, "sourceType", "preset")
+                                }
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                                  !isCategory
+                                    ? "bg-[#1E3F20] text-white border-[#1E3F20] shadow-2xs"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                Preset Filter
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateArrivalTab(tIdx, "sourceType", "category")
+                                }
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                                  isCategory
+                                    ? "bg-[#1E3F20] text-white border-[#1E3F20] shadow-2xs"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                Database Category
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="md:col-span-2">
+                            {!isCategory ? (
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                                  Preset Filter Criteria
+                                </label>
+                                <select
+                                  value={tab.presetFilter || "all"}
+                                  onChange={(e) =>
+                                    handleUpdateArrivalTab(
+                                      tIdx,
+                                      "presetFilter",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                                >
+                                  <option value="all">All Items</option>
+                                  <option value="new_arrivals">Newest Arrivals</option>
+                                  <option value="best_sellers">Best Sellers</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                                  Select Database Category (Includes Unlisted)
+                                </label>
+                                <select
+                                  value={currentCatId}
+                                  onChange={(e) =>
+                                    handleUpdateArrivalTab(
+                                      tIdx,
+                                      "categoryId",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                                >
+                                  <option value="">-- Choose Category --</option>
+                                  {categories.map((cat) => (
+                                    <option key={cat._id} value={cat._id}>
+                                      {cat.name} {cat.isUnlisted ? "(Unlisted)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                  List includes all categories from MongoDB (both listed and unlisted collections).
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Spotlight Show/Hide Switch */}
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs">
+                <div>
+                  <h5 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                    <span>Show Left Spotlight Banner (বামের স্পটলাইট ব্যানার অন/অফ)</span>
+                  </h5>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Toggle left spotlight banner card. If turned off, products display across a full-width 4-column grid.
+                  </p>
+                </div>
+                <Switch
+                  checked={config.newArrivals?.showSpotlightBanner !== false}
+                  onChange={(checked) =>
+                    updateNestedField("newArrivals.showSpotlightBanner", checked)
+                  }
+                />
+              </div>
+
               {/* Spotlight Banner Box */}
               <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
@@ -2075,10 +2695,260 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
           </div>
 
           {openSections.topRankings && (
-            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] text-xs text-gray-600">
-              <p>
-                This section displays top-selling plants categorized into rank positions (#1, #2, #3) with verified ratings and quick-add buttons. Toggle visibility above to show or hide it on the homepage.
-              </p>
+            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] space-y-6">
+              {/* Section Header Controls */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <h4 className="text-xs font-bold text-[#1A2E22] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2.5">
+                  <Sliders className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                  <span>Section Header &amp; Navigation Controls</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Eyebrow / Badge Text
+                    </label>
+                    <input
+                      type="text"
+                      value={config.topRankings?.badge || ""}
+                      onChange={(e) =>
+                        updateNestedField("topRankings.badge", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="CUSTOMER FAVORITES"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Section Main Title
+                    </label>
+                    <input
+                      type="text"
+                      value={config.topRankings?.title || ""}
+                      onChange={(e) =>
+                        updateNestedField("topRankings.title", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="Mini Top Rankings"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Subtitle / Leaderboard Description
+                    </label>
+                    <input
+                      type="text"
+                      value={config.topRankings?.subtitle || ""}
+                      onChange={(e) =>
+                        updateNestedField("topRankings.subtitle", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="Top-rated botanical varieties ranked by gardener reviews and seasonal demand."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      View All Button Label
+                    </label>
+                    <input
+                      type="text"
+                      value={config.topRankings?.viewAllText || ""}
+                      onChange={(e) =>
+                        updateNestedField("topRankings.viewAllText", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="View All Rankings"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      View All Button Destination Link
+                    </label>
+                    <input
+                      type="text"
+                      value={config.topRankings?.viewAllUrl || ""}
+                      onChange={(e) =>
+                        updateNestedField("topRankings.viewAllUrl", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="/collections"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3 Ranking Columns Manager */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#1A2E22] uppercase tracking-wider flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-500" />
+                    <span>3 Ranking Columns (Rank #1, #2, #3 Slots)</span>
+                  </h4>
+                  <span className="text-[10px] text-gray-400">
+                    Each column showcases top 3 products with custom tags
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {[0, 1, 2].map((colIdx) => {
+                    const col = getRankingColumn(colIdx);
+                    return (
+                      <div
+                        key={colIdx}
+                        className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-2xs space-y-4 flex flex-col justify-between"
+                      >
+                        <div className="space-y-3.5">
+                          {/* Column Header */}
+                          <div className="border-b border-gray-100 pb-3 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-[#1A2E22] flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-bold">
+                                  {colIdx + 1}
+                                </span>
+                                Column {colIdx + 1}
+                              </span>
+                              <span className="text-[10px] font-bold bg-[#EBF0E6] text-[#2D5A27] px-2 py-0.5 rounded-full">
+                                Top 3
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                Column Title
+                              </label>
+                              <input
+                                type="text"
+                                value={col.title}
+                                onChange={(e) =>
+                                  updateRankingColumnField(colIdx, "title", e.target.value)
+                                }
+                                className="w-full text-xs px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 font-semibold text-[#1A2E22]"
+                                placeholder={`Column ${colIdx + 1} Title`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                Bottom Browse Link
+                              </label>
+                              <input
+                                type="text"
+                                value={col.browseUrl}
+                                onChange={(e) =>
+                                  updateRankingColumnField(colIdx, "browseUrl", e.target.value)
+                                }
+                                className="w-full text-xs px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 text-gray-600"
+                                placeholder="/collections"
+                              />
+                            </div>
+                          </div>
+
+                          {/* 3 Product Slots */}
+                          <div className="space-y-3">
+                            {col.items.map((item, itemIdx) => {
+                              const rankColors = [
+                                "bg-amber-100 text-amber-800 border-amber-300",
+                                "bg-slate-100 text-slate-700 border-slate-300",
+                                "bg-orange-100 text-orange-800 border-orange-200",
+                              ];
+                              return (
+                                <div
+                                  key={itemIdx}
+                                  className="p-3 bg-[#FAFBF9] rounded-xl border border-gray-200/80 space-y-2"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-black ${rankColors[itemIdx]}`}
+                                      >
+                                        #{itemIdx + 1}
+                                      </span>
+                                      <span className="text-[11px] font-bold text-gray-700">
+                                        Rank #{itemIdx + 1} Specimen
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 mb-0.5">
+                                      Select Product
+                                    </label>
+                                    <select
+                                      value={item.productId || ""}
+                                      onChange={(e) =>
+                                        updateRankingItemField(
+                                          colIdx,
+                                          itemIdx,
+                                          "productId",
+                                          e.target.value || null
+                                        )
+                                      }
+                                      className="w-full text-xs px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                                    >
+                                      <option value="">
+                                        -- Auto-assigned (Top Rated Fallback) --
+                                      </option>
+                                      {allProducts.map((p) => (
+                                        <option key={p._id} value={p._id}>
+                                          {p.title} (৳{p.price})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 mb-0.5">
+                                      Custom Mini Tag Badge
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.badge}
+                                      onChange={(e) =>
+                                        updateRankingItemField(
+                                          colIdx,
+                                          itemIdx,
+                                          "badge",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full text-xs px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                                      placeholder="e.g. NASA Verified"
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Dedicated Save Button */}
+              <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+                <span className="text-[11px] text-gray-400">
+                  Updates reflect instantly on the live store.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1E3F20] hover:bg-[#152D17] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{saving ? "Saving..." : "Save Section Settings"}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -2272,36 +3142,338 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
           </div>
 
           {openSections.blogSection && (
-            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                    Section Heading
-                  </label>
-                  <input
-                    type="text"
-                    value={config.blogSection?.title || ""}
-                    onChange={(e) =>
-                      updateNestedField("blogSection.title", e.target.value)
-                    }
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200"
-                    placeholder="Latest Plant Care Guides"
-                  />
+            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] space-y-6">
+              {/* Header Controls */}
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D6A4F] flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Section Header &amp; Call To Action</span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      Eyebrow / Tag Badge
+                    </label>
+                    <input
+                      type="text"
+                      value={config.blogSection?.badge || ""}
+                      onChange={(e) =>
+                        updateNestedField("blogSection.badge", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="e.g. KNOWLEDGE BASE"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      Section Heading Title
+                    </label>
+                    <input
+                      type="text"
+                      value={config.blogSection?.title || ""}
+                      onChange={(e) =>
+                        updateNestedField("blogSection.title", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="e.g. Latest Plant Care Guides"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">
                     Section Subtitle
                   </label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={config.blogSection?.subtitle || ""}
                     onChange={(e) =>
                       updateNestedField("blogSection.subtitle", e.target.value)
                     }
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200"
-                    placeholder="Expert knowledge on watering cycles..."
+                    className="w-full text-xs p-3 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                    placeholder="Practical advice from our certified botanists and nursery caretakers"
                   />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 border-t border-gray-100">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      "View All" Button Label
+                    </label>
+                    <input
+                      type="text"
+                      value={config.blogSection?.viewAllText || ""}
+                      onChange={(e) =>
+                        updateNestedField("blogSection.viewAllText", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="e.g. All Articles"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      "View All" Destination URL
+                    </label>
+                    <input
+                      type="text"
+                      value={config.blogSection?.viewAllUrl || ""}
+                      onChange={(e) =>
+                        updateNestedField("blogSection.viewAllUrl", e.target.value)
+                      }
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                      placeholder="e.g. /blog"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Blog Source Selector */}
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D6A4F] flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Blog Articles Source Mode</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Choose whether articles update automatically from your latest publications or are hand-picked.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-[#FAFBF9] p-1 rounded-xl border border-gray-200 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateNestedField("blogSection.sourceMode", "latest")
+                      }
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        config.blogSection?.sourceMode !== "selected"
+                          ? "bg-white text-[#1E3F20] shadow-2xs border border-gray-200/60"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Auto: Latest Articles</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateNestedField("blogSection.sourceMode", "selected")
+                      }
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        config.blogSection?.sourceMode === "selected"
+                          ? "bg-white text-[#1E3F20] shadow-2xs border border-gray-200/60"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      <Pin className="w-3.5 h-3.5 text-teal-600" />
+                      <span>Handpick Specific</span>
+                    </button>
+                  </div>
+                </div>
+
+                {config.blogSection?.sourceMode !== "selected" ? (
+                  /* Auto Mode Options */
+                  <div className="p-4 bg-[#F4F6F4]/60 rounded-xl border border-[#2D6A4F]/10 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-[#1A2E22]">
+                          Number of Articles to Display
+                        </label>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          Select grid capacity on the homepage.
+                        </p>
+                      </div>
+                      <select
+                        value={config.blogSection?.displayCount || 3}
+                        onChange={(e) =>
+                          updateNestedField(
+                            "blogSection.displayCount",
+                            Number(e.target.value)
+                          )
+                        }
+                        className="text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white font-bold text-[#1E3F20] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 cursor-pointer"
+                      >
+                        <option value={3}>3 Articles (Single 3-Column Row)</option>
+                        <option value={6}>6 Articles (Two 3-Column Rows)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-gray-500 pt-2 border-t border-gray-200/40">
+                      <Sparkles className="w-3.5 h-3.5 text-[#2D6A4F] shrink-0" />
+                      <span>
+                        The system automatically displays the newest published guides in descending order.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Handpick Specific Articles */
+                  <div className="space-y-4">
+                    <p className="text-xs text-gray-600">
+                      Assign up to 3 specific featured articles for the homepage grid. If unassigned, slots automatically fall back to latest published blogs.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[0, 1, 2].map((slotIdx) => {
+                        const rawList = Array.isArray(config.blogSection?.selectedBlogIds)
+                          ? config.blogSection.selectedBlogIds
+                          : [];
+                        const currentId = rawList[slotIdx] || null;
+                        const selectedBlog = allBlogs.find(
+                          (b) =>
+                            (b._id?.toString() || b.id?.toString()) ===
+                            (currentId?.toString ? currentId.toString() : currentId)
+                        );
+
+                        const handleSlotChange = (newBlogId) => {
+                          const current = Array.isArray(config.blogSection?.selectedBlogIds)
+                            ? [...config.blogSection.selectedBlogIds]
+                            : [];
+                          while (current.length <= slotIdx) {
+                            current.push(null);
+                          }
+                          if (newBlogId) {
+                            current[slotIdx] = newBlogId;
+                          } else {
+                            current.splice(slotIdx, 1);
+                          }
+                          updateNestedField(
+                            "blogSection.selectedBlogIds",
+                            current.filter(Boolean)
+                          );
+                        };
+
+                        return (
+                          <div
+                            key={slotIdx}
+                            className="p-4 bg-[#FAFBF9] rounded-2xl border border-gray-200/80 space-y-3 flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#1A2E22]">
+                                  <span className="w-5 h-5 rounded-full bg-[#EBF0E6] text-[#2D6A4F] flex items-center justify-center text-[10px] font-black border border-[#2D6A4F]/20">
+                                    #{slotIdx + 1}
+                                  </span>
+                                  <span>Article Slot #{slotIdx + 1}</span>
+                                </span>
+                                {currentId && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSlotChange(null)}
+                                    className="text-[10px] text-red-500 hover:text-red-700 font-bold cursor-pointer"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+
+                              <label className="block text-[10px] font-bold text-gray-500 mb-1">
+                                Select Article
+                              </label>
+                              <select
+                                value={currentId || ""}
+                                onChange={(e) => handleSlotChange(e.target.value || null)}
+                                className="w-full text-xs px-2.5 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                              >
+                                <option value="">-- Fallback to Latest Guide --</option>
+                                {allBlogs.map((b) => (
+                                  <option key={b._id} value={b._id}>
+                                    {b.title} ({b.category || "General"})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {selectedBlog ? (
+                              <div className="pt-2 border-t border-gray-200/60 flex items-center gap-2.5">
+                                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                                  <SafeImage
+                                    src={selectedBlog.coverImage || selectedBlog.image}
+                                    fallback="https://images.unsplash.com/photo-1545241047-6083a3684587?w=600&q=80"
+                                    alt={selectedBlog.title}
+                                    fill
+                                    sizes="48px"
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[10px] font-bold text-[#2D6A4F] uppercase tracking-wider truncate">
+                                    {selectedBlog.category || "Plant Care"}
+                                  </p>
+                                  <p className="text-xs font-bold text-[#1A2E22] truncate">
+                                    {selectedBlog.title}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {selectedBlog.readTime || "5 min read"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="pt-2 text-[11px] text-gray-400 italic">
+                                Auto-filled with newest article.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Navigation to Blog Management */}
+              <div className="bg-[#EBF0E6]/50 rounded-2xl p-4 border border-[#2D6A4F]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white text-[#2D6A4F] flex items-center justify-center shadow-2xs border border-[#2D6A4F]/10 shrink-0">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-[#1A2E22]">
+                      Write or Edit Articles in Blog Manager
+                    </h5>
+                    <p className="text-[11px] text-gray-500">
+                      Create new plant care articles, update categories, cover photos, and tags.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof onNavigateTab === "function") {
+                      onNavigateTab("blogs");
+                    } else {
+                      window.location.href = "/Manage_Admin?tab=blogs";
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-[#2D6A4F] border border-[#2D6A4F]/20 text-xs font-bold hover:bg-[#2D6A4F] hover:text-white transition-all shadow-2xs cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  <span>Open Blog Writer &amp; Manager</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Dedicated Save Button */}
+              <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+                <span className="text-[11px] text-gray-400">
+                  Updates reflect instantly on the live store.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1E3F20] hover:bg-[#152D17] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{saving ? "Saving..." : "Save Section Settings"}</span>
+                </button>
               </div>
             </div>
           )}
@@ -2362,10 +3534,127 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
           </div>
 
           {openSections.guaranteeStrip && (
-            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] text-xs text-gray-600">
-              <p>
-                Renders a premium 4-pillar trust strip right above the footer: 100% Healthy Plant Guarantee, Sustainable Eco-Packaging, Express Nationwide Delivery, and Botanical Support.
-              </p>
+            <div className="p-6 border-t border-gray-100 bg-[#FAFBF9] space-y-6">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2D6A4F] flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>4 Botanical Trust Pillars (Cards Customizer)</span>
+                </h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Customize the 4 pre-footer confidence cards. Each item displays an icon, title, and descriptive guarantee.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[0, 1, 2, 3].map((cardIdx) => {
+                  const defaultItem =
+                    DEFAULT_HOMEPAGE_CONFIG.guaranteeStrip?.items?.[cardIdx] || {
+                      icon: "ShieldCheck",
+                      title: `Trust Pillar #${cardIdx + 1}`,
+                      description: "",
+                    };
+                  const currentItem =
+                    config.guaranteeStrip?.items?.[cardIdx] || defaultItem;
+                  const IconComp =
+                    GUARANTEE_ICON_COMPONENTS[currentItem.icon] || ShieldCheck;
+
+                  return (
+                    <div
+                      key={cardIdx}
+                      className="p-5 bg-white rounded-2xl border border-gray-200/80 shadow-2xs space-y-3.5 flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                          <span className="text-xs font-extrabold text-[#1A2E22] flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-[#EBF0E6] text-[#2D6A4F] flex items-center justify-center text-[10px] font-black border border-[#2D6A4F]/20">
+                              {cardIdx + 1}
+                            </span>
+                            <span>Card #{cardIdx + 1} Pillar</span>
+                          </span>
+
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#EBF0E6] text-[#2D6A4F] text-xs font-bold">
+                            <IconComp className="w-3.5 h-3.5" />
+                            <span className="text-[10px]">{currentItem.icon || "ShieldCheck"}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-1">
+                            Icon Selector
+                          </label>
+                          <select
+                            value={currentItem.icon || "ShieldCheck"}
+                            onChange={(e) =>
+                              updateGuaranteeItem(cardIdx, "icon", e.target.value)
+                            }
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 cursor-pointer font-medium"
+                          >
+                            {GUARANTEE_ICON_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-1">
+                            Pillar Title
+                          </label>
+                          <input
+                            type="text"
+                            value={currentItem.title || ""}
+                            onChange={(e) =>
+                              updateGuaranteeItem(cardIdx, "title", e.target.value)
+                            }
+                            className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                            placeholder="e.g. 100% Healthy Plant Guarantee"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 mb-1">
+                            Description
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={currentItem.description || ""}
+                            onChange={(e) =>
+                              updateGuaranteeItem(
+                                cardIdx,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            className="w-full text-xs p-3 rounded-xl border border-gray-200 bg-[#FAFBF9] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+                            placeholder="Acclimatized for resilience. 48-hour replacement warranty..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Dedicated Save Button */}
+              <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+                <span className="text-[11px] text-gray-400">
+                  Updates reflect instantly on the live store.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1E3F20] hover:bg-[#152D17] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>{saving ? "Saving..." : "Save Section Settings"}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

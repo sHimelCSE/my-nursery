@@ -166,6 +166,7 @@ export async function POST(request, { params }) {
         : 0;
 
     await Product.findByIdAndUpdate(productObjectId, {
+      avgRating: avgRating,
       averageRating: avgRating,
       reviewCount: totalReviews,
     });

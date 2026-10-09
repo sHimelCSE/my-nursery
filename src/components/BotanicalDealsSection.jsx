@@ -279,38 +279,40 @@ export default function BotanicalDealsSection({
 
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap self-start lg:self-auto">
           {/* Countdown Clock */}
-          <div
-            className="inline-flex items-center gap-3 bg-[#1E3F20] text-white rounded-2xl px-5 py-3 shadow-sm border border-emerald-900/30"
-            role="timer"
-            aria-label="Deal countdown timer"
-          >
-            <Timer className="w-4 h-4 text-emerald-300 hidden sm:block shrink-0" />
-            {[
-              { v: timeLeft.days, l: "Days" },
-              { v: timeLeft.hours, l: "Hrs" },
-              { v: timeLeft.minutes, l: "Mins" },
-              { v: timeLeft.seconds, l: "Secs" },
-            ].map((unit, i) => (
-              <div key={unit.l} className="flex items-center gap-2 sm:gap-3">
-                {i > 0 && (
-                  <span className="text-base font-bold text-emerald-300/60 -mt-2.5">
-                    :
-                  </span>
-                )}
-                <div className="text-center min-w-[28px]">
-                  <span
-                    suppressHydrationWarning
-                    className="block text-lg sm:text-xl font-bold font-mono tabular-nums leading-none"
-                  >
-                    {unit.v}
-                  </span>
-                  <span className="block text-[9px] uppercase tracking-wider text-emerald-200/80 mt-1">
-                    {unit.l}
-                  </span>
+          {data?.showCountdown !== false && (
+            <div
+              className="inline-flex items-center gap-3 bg-[#1E3F20] text-white rounded-2xl px-5 py-3 shadow-sm border border-emerald-900/30"
+              role="timer"
+              aria-label="Deal countdown timer"
+            >
+              <Timer className="w-4 h-4 text-emerald-300 hidden sm:block shrink-0" />
+              {[
+                { v: timeLeft.days, l: "Days" },
+                { v: timeLeft.hours, l: "Hrs" },
+                { v: timeLeft.minutes, l: "Mins" },
+                { v: timeLeft.seconds, l: "Secs" },
+              ].map((unit, i) => (
+                <div key={unit.l} className="flex items-center gap-2 sm:gap-3">
+                  {i > 0 && (
+                    <span className="text-base font-bold text-emerald-300/60 -mt-2.5">
+                      :
+                    </span>
+                  )}
+                  <div className="text-center min-w-[28px]">
+                    <span
+                      suppressHydrationWarning
+                      className="block text-lg sm:text-xl font-bold font-mono tabular-nums leading-none"
+                    >
+                      {unit.v}
+                    </span>
+                    <span className="block text-[9px] uppercase tracking-wider text-emerald-200/80 mt-1">
+                      {unit.l}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Slider Prev / Next Controls (Only in slider mode) */}
           {displayType === "slider" && (
@@ -354,20 +356,12 @@ export default function BotanicalDealsSection({
                 className="shrink-0 w-full sm:w-1/2 lg:w-1/4 px-2 lg:px-3"
               >
                 <ProductCard
-                  title={product.title}
-                  image={product.image}
-                  fallback={FALLBACK_DEAL_PRODUCTS[idx % 4].images[0]}
-                  price={product.price}
-                  discount={product.discount || fallbackDiscount}
-                  inStock={product.stock > 0}
-                  wished={mounted ? isInWishlist(product._id) : false}
-                  onToggleWishlist={(e) => handleToggleWishlist(product, e)}
+                  product={product}
                   onOpen={() =>
                     onOpenQuickView
                       ? onOpenQuickView(product)
                       : null
                   }
-                  onAdd={(e) => handleAddToCart(product, e)}
                 />
               </div>
             ))}
@@ -388,20 +382,12 @@ export default function BotanicalDealsSection({
                   transition={{ duration: 0.35, delay: (idx % 4) * 0.08 }}
                 >
                   <ProductCard
-                    title={product.title}
-                    image={product.image}
-                    fallback={FALLBACK_DEAL_PRODUCTS[idx % 4].images[0]}
-                    price={product.price}
-                    discount={product.discount || fallbackDiscount}
-                    inStock={product.stock > 0}
-                    wished={mounted ? isInWishlist(product._id) : false}
-                    onToggleWishlist={(e) => handleToggleWishlist(product, e)}
+                    product={product}
                     onOpen={() =>
                       onOpenQuickView
                         ? onOpenQuickView(product)
                         : null
                     }
-                    onAdd={(e) => handleAddToCart(product, e)}
                   />
                 </motion.div>
               ))}

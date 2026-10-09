@@ -40,7 +40,8 @@ export const HERO_SLIDES = [
     floatingCard: {
       title: "Peace Lily (Spathiphyllum)",
       price: "৳380",
-      rating: 5,
+      avgRating: 0,
+      reviewCount: 0,
       link: "/products",
       tag: "Air Cleanser",
     },
@@ -63,7 +64,8 @@ export const HERO_SLIDES = [
     floatingCard: {
       title: "Ficus Retusa Bonsai",
       price: "৳1,250",
-      rating: 5,
+      avgRating: 0,
+      reviewCount: 0,
       link: "/products",
       tag: "Living Sculpture",
     },
@@ -86,7 +88,8 @@ export const HERO_SLIDES = [
     floatingCard: {
       title: "Ceramic Minimalist Planter",
       price: "৳290",
-      rating: 5,
+      avgRating: 0,
+      reviewCount: 0,
       link: "/products",
       tag: "Handcrafted Ceramic",
     },
@@ -103,6 +106,36 @@ export default function HeroSlider({ section, data }) {
   const slides = dynamicSlides
     ? dynamicSlides.map((s, idx) => {
         const fallback = HERO_SLIDES[idx % HERO_SLIDES.length] || HERO_SLIDES[0];
+        const featProd =
+          typeof s.featuredProductId === "object" && s.featuredProductId
+            ? s.featuredProductId
+            : null;
+
+        let floatingCard = null;
+        if (featProd) {
+          floatingCard = {
+            title: featProd.title || "Botanical Specimen",
+            price: `৳${featProd.price}`,
+            link: `/products/${featProd._id}`,
+            avgRating: Number(featProd.avgRating || featProd.averageRating || 0),
+            reviewCount: Number(featProd.reviewCount || 0),
+            tag: featProd.category
+              ? featProd.category.charAt(0).toUpperCase() + featProd.category.slice(1)
+              : (s.floatingCard?.tag || "Featured Specimen"),
+          };
+        } else if (s.floatingCard?.title) {
+          floatingCard = {
+            title: s.floatingCard.title,
+            price: s.floatingCard.price || "৳380",
+            link: s.floatingCard.link || "/products",
+            avgRating: 0,
+            reviewCount: 0,
+            tag: s.floatingCard.tag || fallback.floatingCard.tag,
+          };
+        } else {
+          floatingCard = fallback.floatingCard;
+        }
+
         return {
           id: s._id || `slide-${idx}`,
           badge: s.badge || fallback.badge,
@@ -114,14 +147,7 @@ export default function HeroSlider({ section, data }) {
           secondaryBtnLink: s.secondaryBtnLink || fallback.secondaryBtnLink,
           image: s.imageUrl || s.image || fallback.image,
           imageAlt: s.title || fallback.imageAlt,
-          floatingCard: s.floatingCard?.title
-            ? {
-                title: s.floatingCard.title,
-                price: s.floatingCard.price || "৳380",
-                link: s.floatingCard.link || "/products",
-                tag: s.floatingCard.tag || fallback.floatingCard.tag,
-              }
-            : fallback.floatingCard,
+          floatingCard,
         };
       })
     : [
@@ -337,12 +363,43 @@ export default function HeroSlider({ section, data }) {
                       {currentSlide.floatingCard.title}
                     </h3>
 
-                    {/* Clean 5-Star rating using Lucide icons */}
-                    <div className="flex items-center gap-1 mt-1" aria-label="Rated 5 out of 5 stars">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      ))}
-                      <span className="text-[11px] font-bold text-gray-500 ml-1">5.0</span>
+                    {/* Real Database Star Rating */}
+                    <div className="flex items-center gap-1 mt-1">
+                      {currentSlide.floatingCard.reviewCount > 0 ? (
+                        <>
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((starVal) => {
+                              const isFilled =
+                                starVal <= Math.round(currentSlide.floatingCard.avgRating || 0);
+                              return (
+                                <Star
+                                  key={starVal}
+                                  className={`w-3.5 h-3.5 ${
+                                    isFilled
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              );
+                            })}
+                          </div>
+                          <span className="text-[11px] font-bold text-gray-700 ml-1">
+                            {Number(currentSlide.floatingCard.avgRating).toFixed(1)}
+                          </span>
+                          <span className="text-[11px] text-gray-400">
+                            ({currentSlide.floatingCard.reviewCount})
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((starVal) => (
+                              <Star key={starVal} className="w-3.5 h-3.5 text-gray-300" />
+                            ))}
+                          </div>
+                          <span className="text-[11px] text-gray-400 ml-1">No reviews yet</span>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-gray-100">

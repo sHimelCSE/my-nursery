@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronDown, ArrowRight, ShoppingBag, Plus, Star, Sprout, CheckCircle2 } from "lucide-react";
 import useCartStore from "@/lib/cartStore";
 import { App } from "antd";
+import ProductCard from "@/components/ProductCard";
 
 export default function DynamicGridSection({ section }) {
   const {
@@ -277,69 +278,9 @@ function ProductsBlock({ data }) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {products.map((prod) => {
-        const img = prod.images?.[0] || prod.image || "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600&q=80";
-        const inStock = (prod.stock_quantity ?? 1) > 0;
-        return (
-          <div
-            key={prod._id}
-            className="group bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between text-gray-800"
-          >
-            <Link href={`/products/${prod._id}`} className="relative aspect-square bg-[#FBFBFA] block overflow-hidden">
-              <Image
-                src={img}
-                alt={prod.title}
-                fill
-                sizes="(max-width: 640px) 100vw, 250px"
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              {!inStock && (
-                <span className="absolute top-2 right-2 bg-red-50 text-red-600 border border-red-200 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 shadow-xs">
-                  Out of Stock
-                </span>
-              )}
-            </Link>
-            <div className="p-3 space-y-2">
-              <Link
-                href={`/products/${prod._id}`}
-                className="block font-bold text-xs text-gray-900 truncate hover:text-[#2D5A27] transition-colors"
-              >
-                {prod.title}
-              </Link>
-              <div className="flex items-center justify-between pt-1 border-t border-gray-50">
-                <span className="text-xs font-extrabold text-[#2D5A27]">
-                  ৳{prod.price?.toLocaleString()}
-                </span>
-                <button
-                  type="button"
-                  disabled={!inStock}
-                  onClick={() => {
-                    if (!inStock) return;
-                    addItem({
-                      _id: prod._id,
-                      title: prod.title,
-                      price: prod.price,
-                      images: [img],
-                      image: img,
-                      quantity: 1,
-                    });
-                    message.success({ content: `Added ${prod.title} to cart!`, duration: 2 });
-                    openCart();
-                  }}
-                  className={`p-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    inStock
-                      ? "bg-[#2D5A27] hover:bg-[#7BAE37] text-white cursor-pointer"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                  }`}
-                  title={inStock ? "Add to cart" : "Sold Out"}
-                >
-                  {inStock ? <Plus className="w-3.5 h-3.5" /> : <span className="text-[10px] px-1">Sold Out</span>}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {products.map((prod) => (
+        <ProductCard key={prod._id} product={prod} />
+      ))}
     </div>
   );
 }

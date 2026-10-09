@@ -34,6 +34,7 @@ export async function generateMetadata({ params }) {
     }
 
     const rawDesc =
+      product.shortDescription ||
       product.description ||
       "Premium nursery cultivated specimen acclimated for healthy root development.";
     const description =

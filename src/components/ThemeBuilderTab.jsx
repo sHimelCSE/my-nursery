@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   FileText,
   RotateCcw,
+  Package,
   Menu as MenuIcon,
   Sliders,
   UploadCloud,
@@ -970,6 +971,7 @@ export default function ThemeBuilderTab({ onNavigateTab }) {
         <div className="flex items-center gap-1.5 bg-[#FAFBF9] p-1.5 rounded-2xl border border-emerald-100/60 self-start sm:self-auto flex-wrap">
           {[
             { key: "homepage", label: "Homepage", icon: Home },
+            { key: "product", label: "Product Page (প্রোডাক্ট পেজ)", icon: Package },
             { key: "about", label: "About Us", icon: Sprout },
             { key: "contact", label: "Contact Us", icon: Phone },
             { key: "privacy", label: "Privacy Policy", icon: ShieldCheck },
@@ -1008,9 +1010,9 @@ export default function ThemeBuilderTab({ onNavigateTab }) {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          SUB-TAB: INNER STOREFRONT PAGES (ABOUT, CONTACT, PRIVACY, TERMS, REFUND)
+          SUB-TAB: INNER STOREFRONT PAGES (PRODUCT, ABOUT, CONTACT, PRIVACY, TERMS, REFUND)
       ═══════════════════════════════════════════════════════════════════════ */}
-      {["about", "contact", "privacy", "terms", "refund"].includes(activeSubTab) && (
+      {["product", "about", "contact", "privacy", "terms", "refund"].includes(activeSubTab) && (
         <PagesCustomizerTab activePage={activeSubTab} onPageChange={setActiveSubTab} />
       )}
 

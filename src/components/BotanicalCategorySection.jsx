@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -37,16 +37,16 @@ export default function BotanicalCategorySection({
   categories: initialCategories,
   onSelectCategory,
 }) {
-  const [categories, setCategories] = useState(
+  const [allCategories, setAllCategories] = useState(
     Array.isArray(initialCategories) && initialCategories.length > 0
       ? initialCategories
-      : DEFAULT_BOTANICAL_CATEGORIES
+      : []
   );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(initialCategories) && initialCategories.length > 0) {
-      setCategories(initialCategories);
+      setAllCategories(initialCategories);
       return;
     }
 
@@ -56,7 +56,7 @@ export default function BotanicalCategorySection({
       .then((res) => res.json())
       .then((json) => {
         if (isMounted && json.success && Array.isArray(json.categories)) {
-          setCategories(json.categories);
+          setAllCategories(json.categories);
         }
       })
       .catch((err) => {
@@ -70,6 +70,46 @@ export default function BotanicalCategorySection({
       isMounted = false;
     };
   }, [initialCategories]);
+
+  // Determine the exact 4 categories to render
+  const displayCategories = useMemo(() => {
+    const rawFeatured = data?.featuredCategoryIds;
+
+    // Case 1: Populated objects with name and productCount
+    if (
+      Array.isArray(rawFeatured) &&
+      rawFeatured.length > 0 &&
+      typeof rawFeatured[0] === "object" &&
+      rawFeatured[0]?.name
+    ) {
+      return rawFeatured.slice(0, 4);
+    }
+
+    // Case 2: Array of category IDs (strings or {_id})
+    if (Array.isArray(rawFeatured) && rawFeatured.length > 0 && allCategories.length > 0) {
+      const idMap = new Map(
+        allCategories.map((c) => [c._id?.toString() || c.id?.toString(), c])
+      );
+      const matched = rawFeatured
+        .map((item) => {
+          const id = typeof item === "object" && item?._id ? item._id.toString() : item?.toString();
+          return idMap.get(id);
+        })
+        .filter(Boolean);
+
+      if (matched.length > 0) {
+        return matched.slice(0, 4);
+      }
+    }
+
+    // Case 3: Fallback to first 4 active categories from MongoDB
+    if (allCategories.length > 0) {
+      return allCategories.slice(0, 4);
+    }
+
+    // Case 4: Default botanical categories fallback
+    return DEFAULT_BOTANICAL_CATEGORIES.slice(0, 4);
+  }, [data?.featuredCategoryIds, allCategories]);
 
   const title =
     data?.title ||
@@ -117,20 +157,20 @@ export default function BotanicalCategorySection({
         </Link>
       </div>
 
-      {/* ─── Dynamic Category Cards ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-5">
-        {loading && categories.length === 0
-          ? Array.from({ length: 5 }).map((_, idx) => (
+      {/* ─── Dynamic Category Cards (Exact 4 Collections) ─────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5">
+        {loading && displayCategories.length === 0
+          ? Array.from({ length: 4 }).map((_, idx) => (
             <div
               key={`skeleton-${idx}`}
-              className="bg-[#F2F5ED] rounded-3xl p-3 text-center border border-transparent animate-pulse"
+              className="bg-[#F2F5ED] rounded-3xl p-3.5 text-center border border-transparent animate-pulse"
             >
               <div className="aspect-square w-full rounded-2xl bg-[#E2E8DC]" />
               <div className="h-4 w-20 bg-[#E2E8DC] rounded-md mx-auto mt-3" />
               <div className="h-3 w-14 bg-[#E2E8DC] rounded-md mx-auto mt-1.5" />
             </div>
           ))
-          : categories.map((cat, idx) => {
+          : displayCategories.map((cat, idx) => {
             const productCount =
               typeof cat.productCount === "number" ? cat.productCount : 0;
             const countText = `${productCount}+ Plants`;
@@ -144,16 +184,16 @@ export default function BotanicalCategorySection({
               <Link
                 key={cat._id || cat.id || catSlug || idx}
                 href={`/collections/${catSlug}`}
-                className="category-card group bg-[#F2F5ED] rounded-3xl p-3 text-center border border-[#1E3F20]/15 hover:border-[#1E3F20]/15 hover:shadow-[0_16px_32px_-16px_rgba(28,43,30,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-between cursor-pointer"
+                className="category-card group bg-[#F2F5ED] rounded-3xl p-3.5 text-center border border-[#1E3F20]/15 hover:border-[#1E3F20]/30 hover:shadow-[0_16px_32px_-16px_rgba(28,43,30,0.25)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-between cursor-pointer"
               >
-                <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white/70 p-2">
+                <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-white/80 p-3 flex items-center justify-center">
                   <SafeImage
                     src={catImage}
                     fallback={FALLBACK_IMAGE}
                     alt={cat.name}
                     fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                    className="object-cover rounded-2xl group-hover:scale-108 transition-transform duration-500"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
                 <div className="mt-3 w-full">

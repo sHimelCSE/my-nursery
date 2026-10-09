@@ -25,6 +25,7 @@ import {
 import { App } from "antd";
 import useCartStore from "@/lib/cartStore";
 import { getBlogSchema } from "@/lib/jsonLd";
+import ProductCard from "@/components/ProductCard";
 
 const FALLBACK_BLOG_IMAGE = "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1200&q=80";
 const FALLBACK_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80";
@@ -355,87 +356,12 @@ export default function BlogDetailPage() {
             >
               {blog.relatedProducts.map((product) => {
                 const prodId = product._id || product.id;
-                const prodImage = product.images?.[0] || product.image || FALLBACK_PRODUCT_IMAGE;
-                const price = Number(product.price) || 0;
-                const discountPrice = Number(product.discountPrice) || 0;
-                const hasDiscount = discountPrice > 0 && discountPrice < price;
-                const displayPrice = hasDiscount ? discountPrice : price;
-                const isOutOfStock = product.stock === 0;
-
                 return (
                   <div
                     key={prodId}
-                    className="w-[260px] sm:w-[280px] shrink-0 snap-start bg-white rounded-3xl border border-gray-200/80 p-3 hover:border-emerald-300 hover:shadow-[0_12px_28px_-8px_rgba(28,43,30,0.12)] transition-all duration-300 flex flex-col group"
+                    className="w-[260px] sm:w-[280px] shrink-0 snap-start flex flex-col"
                   >
-                    {/* Product Image Link */}
-                    <Link
-                      href={`/products/${prodId}`}
-                      className="relative aspect-square rounded-2xl overflow-hidden bg-[#F2F5ED] block cursor-pointer"
-                    >
-                      <SafeImage
-                        src={prodImage}
-                        fallback={FALLBACK_PRODUCT_IMAGE}
-                        alt={product.title}
-                        fill
-                        sizes="280px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-
-                      {/* Discount Badge */}
-                      {hasDiscount && (
-                        <div className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs">
-                          SALE
-                        </div>
-                      )}
-
-                      {/* Category Tag */}
-                      {product.category && (
-                        <div className="absolute bottom-2.5 left-2.5 bg-[#1E3F20]/90 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-xs">
-                          {product.category}
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Product Info */}
-                    <div className="p-2.5 flex flex-col flex-1">
-                      <h3 className="font-extrabold text-sm text-[#1C2B1E] group-hover:text-[#2D5A27] transition-colors line-clamp-1 mb-1">
-                        <Link href={`/products/${prodId}`}>{product.title}</Link>
-                      </h3>
-
-                      {/* Price Section */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-base font-black text-[#2D5A27]">
-                          ৳{displayPrice.toLocaleString("en-BD")}
-                        </span>
-                        {hasDiscount && (
-                          <span className="text-xs text-gray-400 line-through">
-                            ৳{price.toLocaleString("en-BD")}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Stock & Add to Cart Button */}
-                      <div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                        <span
-                          className={`text-[11px] font-semibold ${isOutOfStock ? "text-red-500" : "text-emerald-700"
-                            }`}
-                        >
-                          {isOutOfStock ? "Out of Stock" : "In Stock"}
-                        </span>
-
-                        <button
-                          onClick={(e) => handleAddToCart(product, e)}
-                          disabled={isOutOfStock}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${isOutOfStock
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-[#2D5A27] hover:bg-[#1E3F20] text-white hover:shadow-xs active:scale-95"
-                            }`}
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>+ Add to Cart</span>
-                        </button>
-                      </div>
-                    </div>
+                    <ProductCard product={product} />
                   </div>
                 );
               })}

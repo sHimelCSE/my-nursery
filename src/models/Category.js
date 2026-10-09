@@ -32,6 +32,10 @@ const CategorySchema = new Schema(
       type: Number,
       default: 0,
     },
+    isUnlisted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -106,6 +106,53 @@ const PageThemeConfigSchema = new mongoose.Schema(
         steps: { type: [StepItemSchema], default: DEFAULT_PAGE_THEME_CONFIG.policyPages.refund.steps },
       },
     },
+    productPage: {
+      defaultTabTitle: {
+        type: String,
+        default: DEFAULT_PAGE_THEME_CONFIG.productPage.defaultTabTitle,
+      },
+      featureCards: {
+        isEnabled: { type: Boolean, default: true },
+        card1: {
+          icon: { type: String, default: "Sprout" },
+          title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.featureCards.card1.title },
+          description: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.featureCards.card1.description },
+        },
+        card2: {
+          icon: { type: String, default: "RotateCcw" },
+          title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.featureCards.card2.title },
+          description: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.featureCards.card2.description },
+        },
+      },
+      trustBadges: {
+        isEnabled: { type: Boolean, default: true },
+        badge1: {
+          title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge1.title },
+          subtext: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge1.subtext },
+        },
+        badge2: {
+          title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge2.title },
+          subtext: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge2.subtext },
+        },
+        badge3: {
+          title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge3.title },
+          subtext: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.trustBadges.badge3.subtext },
+        },
+      },
+      paymentBadges: {
+        isEnabled: { type: Boolean, default: true },
+        methods: {
+          type: [String],
+          default: DEFAULT_PAGE_THEME_CONFIG.productPage.paymentBadges.methods,
+        },
+      },
+      relatedSection: {
+        isEnabled: { type: Boolean, default: true },
+        badge: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.relatedSection.badge },
+        title: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.relatedSection.title },
+        viewAllUrl: { type: String, default: DEFAULT_PAGE_THEME_CONFIG.productPage.relatedSection.viewAllUrl },
+      },
+    },
   },
   { timestamps: true }
 );

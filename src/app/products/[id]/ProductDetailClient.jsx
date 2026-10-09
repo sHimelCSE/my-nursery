@@ -33,9 +33,13 @@ import {
   LogIn,
   X,
   ExternalLink,
+  Sparkles,
+  CreditCard,
 } from "lucide-react";
 import useCartStore from "@/lib/cartStore";
 import useWishlistStore from "@/lib/wishlistStore";
+import ProductCard from "@/components/ProductCard";
+import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=80";
 
@@ -115,15 +119,69 @@ export default function ProductDetailClient({ params, id: directId }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
 
-  // Real Persistent Reviews state
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [activeDiscounts, setActiveDiscounts] = useState([]);
   const [reviewsList, setReviewsList] = useState([]);
   const [reviewsStats, setReviewsStats] = useState({ averageRating: 0, totalReviews: 0 });
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
+  const [guestName, setGuestName] = useState("");
   const [reviewComment, setReviewComment] = useState("");
   const [brandName, setBrandName] = useState("MSH BloomCraft");
+  const [pageThemeConfig, setPageThemeConfig] = useState(null);
+
+  // Sync selected variant when product loads
+  useEffect(() => {
+    if (product?.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
+      setSelectedVariant(product.variants[0]);
+    } else {
+      setSelectedVariant(null);
+    }
+  }, [product]);
+
+  // Fetch active discount promotions for promotion banner
+  useEffect(() => {
+    let isSubscribed = true;
+    async function fetchDiscounts() {
+      try {
+        const res = await fetch("/api/discounts");
+        const json = await res.json();
+        if (isSubscribed && json.success && Array.isArray(json.discounts)) {
+          setActiveDiscounts(json.discounts);
+        }
+      } catch {}
+    }
+    fetchDiscounts();
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
+  // Fetch page theme configuration for product page
+  useEffect(() => {
+    let isSubscribed = true;
+    async function fetchThemeConfig() {
+      try {
+        const res = await fetch("/api/page-theme-config");
+        const json = await res.json();
+        if (isSubscribed && json.success && json.data) {
+          setPageThemeConfig(json.data);
+        }
+      } catch {}
+    }
+    fetchThemeConfig();
+
+    const handleConfigUpdate = () => {
+      fetchThemeConfig();
+    };
+    window.addEventListener("pageThemeConfigUpdated", handleConfigUpdate);
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener("pageThemeConfigUpdated", handleConfigUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -234,8 +292,35 @@ export default function ProductDetailClient({ params, id: directId }) {
     };
   }, [product, id]);
 
-  const currentPrice = product ? Math.round(product.price * selectedSize.multiplier) : 0;
-  const originalPrice = Math.round(currentPrice * 1.34);
+  // Dynamic Product Page Theme Configuration
+  const productPageConfig =
+    pageThemeConfig?.productPage || DEFAULT_PAGE_THEME_CONFIG.productPage;
+
+  // Dynamic Variants & Pricing
+  const hasDynamicVariants = Boolean(product?.hasVariants && product.variants?.length > 0);
+
+  const currentPrice = hasDynamicVariants && selectedVariant
+    ? Number(selectedVariant.price)
+    : product
+      ? Math.round(product.price * (selectedSize?.multiplier || 1.0))
+      : 0;
+
+  const originalPrice = hasDynamicVariants && selectedVariant && Number(selectedVariant.originalPrice) > 0
+    ? Number(selectedVariant.originalPrice)
+    : product?.originalPrice > 0
+      ? Number(product.originalPrice)
+      : Math.round(currentPrice * 1.34);
+
+  const currentStock = hasDynamicVariants && selectedVariant
+    ? Number(selectedVariant.stock ?? 10)
+    : Number(product?.stock_quantity ?? 0);
+
+  const inStock = currentStock > 0;
+
+  const discountPercent =
+    originalPrice > currentPrice
+      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+      : 0;
 
   // Build image list: if multiple images exist in db use them, else fallback to varied angles
   const images = product?.images && product.images.length > 1
@@ -245,19 +330,31 @@ export default function ProductDetailClient({ params, id: directId }) {
       : GALLERY_ANGLES;
 
   const handleAddToCart = (openDrawer = true) => {
-    if (!product || product.stock_quantity <= 0) return;
+    if (!product || !inStock) return;
+
+    const variantName = hasDynamicVariants && selectedVariant ? selectedVariant.name : null;
+    const cartItemId = variantName
+      ? `${product._id}-${variantName.replace(/\s+/g, "-").toLowerCase()}`
+      : `${product._id}-${selectedSize?.id || "standard"}`;
+
+    const cartTitle = variantName
+      ? `${product.title} (${variantName})`
+      : `${product.title} (${selectedSize?.label || "Standard"})`;
 
     addItem({
-      _id: `${product._id}-${selectedSize.id}`,
-      title: `${product.title} (${selectedSize.label})`,
+      _id: cartItemId,
+      productId: product._id,
+      title: cartTitle,
+      selectedVariant: variantName,
       price: currentPrice,
       images: [images[0] || FALLBACK_IMG],
       image: images[0] || FALLBACK_IMG,
+      category: product.category || "",
       quantity,
     });
 
     message.success({
-      content: `Added ${quantity} × ${product.title} to your cart!`,
+      content: `Added ${quantity} × ${cartTitle} to your cart!`,
       duration: 2,
     });
 
@@ -267,7 +364,7 @@ export default function ProductDetailClient({ params, id: directId }) {
   };
 
   const handleBuyNow = () => {
-    if (!product || product.stock_quantity <= 0) return;
+    if (!product || !inStock) return;
     handleAddToCart(false);
     router.push("/checkout");
   };
@@ -379,7 +476,6 @@ export default function ProductDetailClient({ params, id: directId }) {
     );
   }
 
-  const inStock = product.stock_quantity > 0;
   const categoryLabel =
     product.category === "plant"
       ? "Living Plants"
@@ -468,17 +564,31 @@ export default function ProductDetailClient({ params, id: directId }) {
 
           {/* ════ RIGHT COLUMN: PRODUCT DETAILS & ACTIONS ════ */}
           <div className="lg:col-span-6 space-y-6">
-            {/* Tags & Category Badge */}
+            {/* Tags & Category Badges (Dynamic) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+              <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-2xs">
                 {product.category === "plant" ? "Indoor Foliage" : product.category === "fertilizer" ? "Organic Feed" : "Ceramic & Tools"}
               </span>
-              <span className="bg-[#F1F8E9] text-[#558B2F] text-[11px] font-semibold px-3 py-1 rounded-full">
-                Air Purifier
-              </span>
-              <span className="bg-gray-100 text-gray-600 text-[11px] font-semibold px-3 py-1 rounded-full">
-                Eco Certified
-              </span>
+
+              {Array.isArray(product.tags) && product.tags.length > 0 ? (
+                product.tags.map((tag, tIdx) => (
+                  <span
+                    key={`pdp-tag-${tIdx}`}
+                    className="bg-[#F1F8E9] text-[#2D6A4F] border border-emerald-200/50 text-[11px] font-semibold px-3 py-1 rounded-full shadow-2xs"
+                  >
+                    {tag}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span className="bg-[#F1F8E9] text-[#558B2F] text-[11px] font-semibold px-3 py-1 rounded-full">
+                    Air Purifier
+                  </span>
+                  <span className="bg-gray-100 text-gray-600 text-[11px] font-semibold px-3 py-1 rounded-full">
+                    Eco Certified
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Product Title */}
@@ -489,41 +599,61 @@ export default function ProductDetailClient({ params, id: directId }) {
 
               {/* Star Rating Strip */}
               <div className="flex items-center gap-3 mt-2.5">
-                <div className="flex items-center gap-1 text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={`hero-star-${i}`}
-                      className={`w-4 h-4 ${
-                        i < Math.round(reviewsStats.averageRating || product.averageRating || 5)
-                          ? "fill-amber-400 text-amber-400"
-                          : "fill-gray-200 text-gray-200"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-bold text-gray-900">
-                  {reviewsStats.totalReviews > 0
-                    ? reviewsStats.averageRating.toFixed(1)
-                    : product.averageRating
-                    ? product.averageRating.toFixed(1)
-                    : "5.0"}
-                </span>
-                <span className="text-xs text-gray-400">·</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("reviews");
-                    const el = document.getElementById("reviews-tab");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="text-xs text-gray-500 hover:text-[#2D5A27] underline cursor-pointer"
-                >
-                  {reviewsStats.totalReviews > 0
-                    ? `${reviewsStats.totalReviews} verified ${
-                        reviewsStats.totalReviews === 1 ? "review" : "reviews"
-                      }`
-                    : "Be the first to review"}
-                </button>
+                {reviewsStats.totalReviews > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={`hero-star-${i}`}
+                          className={`w-4 h-4 ${
+                            i < Math.round(reviewsStats.averageRating || 0)
+                              ? "fill-amber-400 text-amber-400"
+                              : "fill-gray-200 text-gray-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-gray-900">
+                      {reviewsStats.averageRating.toFixed(1)}
+                    </span>
+                    <span className="text-xs text-gray-400">·</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("reviews");
+                        const el = document.getElementById("reviews-tab");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="text-xs text-gray-500 hover:text-[#2D5A27] underline cursor-pointer"
+                    >
+                      {reviewsStats.totalReviews} verified {reviewsStats.totalReviews === 1 ? "review" : "reviews"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1 text-gray-300">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={`hero-star-${i}`}
+                          className="w-4 h-4 text-gray-300"
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-400 font-medium">No reviews yet</span>
+                    <span className="text-xs text-gray-400">·</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("reviews");
+                        const el = document.getElementById("reviews-tab");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="text-xs text-[#2D5A27] hover:underline font-semibold cursor-pointer"
+                    >
+                      Be the first to review
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -533,16 +663,26 @@ export default function ProductDetailClient({ params, id: directId }) {
                 <span className="text-3xl sm:text-4xl font-extrabold text-[#2D6A4F]">
                   ৳{currentPrice.toLocaleString("en-US")}
                 </span>
-                <del className="text-base text-gray-400 font-medium">
-                  ৳{originalPrice.toLocaleString("en-US")}
-                </del>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Save 34%
-                </span>
+                {originalPrice > currentPrice && (
+                  <del className="text-base text-gray-400 font-medium">
+                    ৳{originalPrice.toLocaleString("en-US")}
+                  </del>
+                )}
+                {discountPercent > 0 && (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                    Save {discountPercent}%
+                  </span>
+                )}
               </div>
               <span className="text-xs text-gray-400 hidden sm:inline">
                 Inclusive of all taxes
               </span>
+            </div>
+
+            {/* Dynamic Active Promotion Suggestion Banner */}
+            <div className="flex items-center gap-2 p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-2xl text-emerald-900 text-xs font-medium">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Orders over ৳1000 qualify for FREE doorstep delivery! Use active promo codes in cart.</span>
             </div>
 
             {/* Meta Info Strip */}
@@ -554,14 +694,14 @@ export default function ProductDetailClient({ params, id: directId }) {
               <div>
                 <span className="text-gray-400 block text-[10px] uppercase font-semibold">SKU</span>
                 <span className="font-mono font-medium text-gray-700">
-                  GL-{product._id ? String(product._id).slice(-6).toUpperCase() : "784920"}
+                  {selectedVariant?.sku || `GL-${product._id ? String(product._id).slice(-6).toUpperCase() : "784920"}`}
                 </span>
               </div>
               <div>
                 <span className="text-gray-400 block text-[10px] uppercase font-semibold">Availability</span>
                 {inStock ? (
                   <span className="inline-flex items-center gap-1 text-[#2D5A27] font-bold">
-                    <Check className="w-3.5 h-3.5" /> In Stock ({product.stock_quantity})
+                    <Check className="w-3.5 h-3.5" /> In Stock ({currentStock})
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-200">
@@ -571,77 +711,108 @@ export default function ProductDetailClient({ params, id: directId }) {
               </div>
             </div>
 
-            {/* Short Botanical Description */}
+            {/* Dynamic Top Summary */}
             <p className="text-sm text-gray-600 leading-relaxed">
-              {product.description ||
+              {product.shortDescription ||
+                product.description ||
                 "Cultivated in controlled nursery conditions for optimal root development, balanced foliage growth, and seamless indoor acclimatization."}
             </p>
 
-            {/* Plant Care Quick-Stats Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FFF9E6] border border-amber-100/80">
-                <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-                <div className="min-w-0">
-                  <span className="block text-[10px] font-bold uppercase text-amber-900">Sunlight</span>
-                  <span className="block text-[11px] text-gray-600 truncate">Medium Indirect</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#E8F4FD] border border-sky-100/80">
-                <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
-                <div className="min-w-0">
-                  <span className="block text-[10px] font-bold uppercase text-sky-900">Water</span>
-                  <span className="block text-[11px] text-gray-600 truncate">Once a week</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#EAF7EE] border border-emerald-100/80">
-                <PawPrint className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div className="min-w-0">
-                  <span className="block text-[10px] font-bold uppercase text-emerald-900">Pet Safe</span>
-                  <span className="block text-[11px] text-gray-600 truncate">Non-Toxic</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#F1F8E9] border border-green-100/80">
-                <Sprout className="w-4 h-4 text-green-600 shrink-0" />
-                <div className="min-w-0">
-                  <span className="block text-[10px] font-bold uppercase text-green-900">Difficulty</span>
-                  <span className="block text-[11px] text-gray-600 truncate">Beginner</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Size Selector Pills (Using valid span children inside buttons) */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-900">
-                  Select Pot &amp; Specimen Size:
-                </span>
-                <span className="text-xs text-[#2D5A27] font-semibold">{selectedSize.sub}</span>
-              </div>
+            {/* Plant Care Quick-Stats Badges (Conditionally rendered) */}
+            {product.showCareGuideBadges !== false && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {POT_SIZES.map((size) => {
-                  const isSelected = selectedSize.id === size.id;
-                  return (
-                    <button
-                      key={`size-${size.id}`}
-                      type="button"
-                      onClick={() => setSelectedSize(size)}
-                      className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${isSelected
-                          ? "bg-[#2D5A27] text-white border-[#2D5A27] shadow-sm ring-2 ring-[#7BAE37]/30 scale-102"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-[#7BAE37] hover:bg-[#FBFBFA]"
-                        }`}
-                    >
-                      <span className="block text-xs font-bold">{size.label}</span>
-                      <span className={`block text-[10px] mt-0.5 ${isSelected ? "text-emerald-100" : "text-gray-400"}`}>
-                        ৳{Math.round(product.price * size.multiplier).toLocaleString("en-US")}
-                      </span>
-                    </button>
-                  );
-                })}
+                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FFF9E6] border border-amber-100/80">
+                  <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase text-amber-900">Sunlight</span>
+                    <span className="block text-[11px] text-gray-600 truncate">
+                      {product.careBadges?.sunlight || "Medium Indirect"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#E8F4FD] border border-sky-100/80">
+                  <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase text-sky-900">Water</span>
+                    <span className="block text-[11px] text-gray-600 truncate">
+                      {product.careBadges?.water || "Once a week"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#EAF7EE] border border-emerald-100/80">
+                  <PawPrint className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase text-emerald-900">Pet Safe</span>
+                    <span className="block text-[11px] text-gray-600 truncate">
+                      {product.careBadges?.petSafe || "Non-Toxic"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#F1F8E9] border border-green-100/80">
+                  <Sprout className="w-4 h-4 text-green-600 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase text-green-900">Difficulty</span>
+                    <span className="block text-[11px] text-gray-600 truncate">
+                      {product.careBadges?.difficulty || "Beginner"}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Dynamic Variant Selector (Shopify-Style) */}
+            {hasDynamicVariants ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    {product.variantGroupTitle || "Select Option"}:
+                  </span>
+                  {selectedVariant && (
+                    <span className="text-xs text-[#2D5A27] font-semibold">
+                      Selected: {selectedVariant.name}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {product.variants.map((variant, idx) => {
+                    const isSelected = selectedVariant?.name === variant.name;
+                    return (
+                      <button
+                        key={`variant-${idx}`}
+                        type="button"
+                        onClick={() => setSelectedVariant(variant)}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-[#2D5A27] text-white border-[#2D5A27] shadow-sm ring-2 ring-[#7BAE37]/30 scale-102"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-[#7BAE37] hover:bg-[#FBFBFA]"
+                        }`}
+                      >
+                        <span className="block text-xs font-bold">{variant.name}</span>
+                        <span
+                          className={`block text-[10px] mt-0.5 ${
+                            isSelected ? "text-emerald-100" : "text-gray-500 font-semibold"
+                          }`}
+                        >
+                          ৳{Number(variant.price).toLocaleString("en-US")}
+                        </span>
+                        {variant.stock <= 5 && variant.stock > 0 && (
+                          <span
+                            className={`block text-[9px] ${
+                              isSelected ? "text-emerald-200" : "text-amber-600 font-medium"
+                            }`}
+                          >
+                            Only {variant.stock} left
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             {/* Quantity & CTA Buttons */}
             <div className="space-y-3 pt-2">
@@ -662,8 +833,8 @@ export default function ProductDetailClient({ params, id: directId }) {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock_quantity || 99, q + 1))}
-                    disabled={quantity >= product.stock_quantity || !inStock}
+                    onClick={() => setQuantity((q) => Math.min(currentStock || 99, q + 1))}
+                    disabled={quantity >= currentStock || !inStock}
                     aria-label="Increase quantity"
                     className="w-10 h-11 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                   >
@@ -732,61 +903,96 @@ export default function ProductDetailClient({ params, id: directId }) {
             </div>
 
             {/* Trust & Guarantee Strip */}
-            <div className="rounded-3xl bg-white p-5 border border-gray-100 space-y-4 shadow-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] text-[#2D5A27] flex items-center justify-center shrink-0">
-                    <Truck className="w-4 h-4" />
+            {productPageConfig.trustBadges?.isEnabled !== false && (
+              <div className="rounded-3xl bg-white p-5 border border-gray-100 space-y-4 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] text-[#2D5A27] flex items-center justify-center shrink-0">
+                      <Truck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-bold text-gray-900">
+                        {productPageConfig.trustBadges?.badge1?.title || "Free Shipping"}
+                      </span>
+                      <span className="block text-[10px] text-gray-500">
+                        {productPageConfig.trustBadges?.badge1?.subtext || "Over ৳1000 order"}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-[11px] font-bold text-gray-900">Free Shipping</span>
-                    <span className="block text-[10px] text-gray-500">Over ৳1000 order</span>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#E3F2FD] text-sky-700 flex items-center justify-center shrink-0">
+                      <Headphones className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-bold text-gray-900">
+                        {productPageConfig.trustBadges?.badge2?.title || "24/7 Care Support"}
+                      </span>
+                      <span className="block text-[10px] text-gray-500">
+                        {productPageConfig.trustBadges?.badge2?.subtext || "Plant care helpline"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#FFF3E0] text-amber-700 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-bold text-gray-900">
+                        {productPageConfig.trustBadges?.badge3?.title || "Safe Payment"}
+                      </span>
+                      <span className="block text-[10px] text-gray-500">
+                        {productPageConfig.trustBadges?.badge3?.subtext || "COD Available"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#E3F2FD] text-sky-700 flex items-center justify-center shrink-0">
-                    <Headphones className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="block text-[11px] font-bold text-gray-900">24/7 Care Support</span>
-                    <span className="block text-[10px] text-gray-500">Plant care helpline</span>
-                  </div>
-                </div>
+                {/* Payment Method Badges */}
+                {productPageConfig.paymentBadges?.isEnabled !== false && (
+                  <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-gray-500">Guaranteed Safe Checkout:</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(productPageConfig.paymentBadges?.methods || [
+                        "bKash",
+                        "Nagad",
+                        "VISA",
+                        "Mastercard",
+                        "Cash on Delivery",
+                      ]).map((method, mIdx) => {
+                        const isCOD = method.toLowerCase().includes("cash");
+                        const isBkash = method.toLowerCase().includes("bkash");
+                        const isNagad = method.toLowerCase().includes("nagad");
+                        const isVisa = method.toLowerCase().includes("visa");
+                        const isMC = method.toLowerCase().includes("master");
 
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#FFF3E0] text-amber-700 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-4 h-4" />
+                        return (
+                          <span
+                            key={`pay-method-${mIdx}`}
+                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold border shadow-2xs ${
+                              isCOD
+                                ? "bg-emerald-50 border-emerald-200 text-[#2D5A27]"
+                                : isBkash
+                                ? "bg-pink-50 border-pink-200 text-pink-600"
+                                : isNagad
+                                ? "bg-orange-50 border-orange-200 text-orange-600"
+                                : isVisa
+                                ? "bg-blue-50 border-blue-200 text-blue-700"
+                                : isMC
+                                ? "bg-red-50 border-red-200 text-red-600"
+                                : "bg-gray-50 border-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {method}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-[11px] font-bold text-gray-900">Safe Payment</span>
-                    <span className="block text-[10px] text-gray-500">COD Available</span>
-                  </div>
-                </div>
+                )}
               </div>
-
-              {/* Payment Method Badges */}
-              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold text-gray-500">Guaranteed Safe Checkout:</span>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 rounded-md bg-gray-50 border border-gray-200 text-[10px] font-bold text-pink-600">
-                    bKash
-                  </span>
-                  <span className="px-2 py-1 rounded-md bg-gray-50 border border-gray-200 text-[10px] font-bold text-orange-600">
-                    Nagad
-                  </span>
-                  <span className="px-2 py-1 rounded-md bg-gray-50 border border-gray-200 text-[10px] font-bold text-blue-700">
-                    VISA
-                  </span>
-                  <span className="px-2 py-1 rounded-md bg-gray-50 border border-gray-200 text-[10px] font-bold text-red-600">
-                    Mastercard
-                  </span>
-                  <span className="px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-[#2D5A27]">
-                    Cash on Delivery
-                  </span>
-                </div>
-              </div>
-            </div>
+            )}
 
           </div>
         </div>
@@ -797,7 +1003,7 @@ export default function ProductDetailClient({ params, id: directId }) {
           <div className="flex border-b border-gray-100 overflow-x-auto bg-[#FBFBFA]">
             {[
               { id: "description", label: "Description" },
-              { id: "care", label: "Care Guide" },
+              ...(product.showCareGuideBadges !== false ? [{ id: "care", label: "Care Guide" }] : []),
               { id: "reviews", label: `Customer Reviews (${reviewsStats.totalReviews})` },
             ].map((tab) => (
               <button
@@ -820,35 +1026,52 @@ export default function ProductDetailClient({ params, id: directId }) {
               <div className="space-y-6 max-w-4xl">
                 <div className="space-y-3">
                   <h3 className="text-xl font-bold text-gray-900 font-serif">
-                    Botanical Background &amp; Characteristics
+                    {product.customTabTitle || productPageConfig.defaultTabTitle || "Botanical Background & Characteristics"}
                   </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                    {product.description ||
-                      "Our botanical specimens are hand-selected from specialized nursery farm stocks in Bangladesh. Acclimatized to domestic indoor humidity levels, each specimen showcases healthy foliage pigmentation, robust stem structures, and strong root health."}
-                  </p>
+                  {(() => {
+                    const cleanHtml = (product.fullDescriptionHtml || product.description || "")
+                      .replace(/&nbsp;/g, " ");
+
+                    return cleanHtml ? (
+                      <div
+                        className="prose prose-emerald max-w-none text-slate-700 leading-relaxed text-sm break-words whitespace-normal overflow-wrap-anywhere my-4 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>h1]:font-bold [&>h2]:font-bold [&>h3]:font-bold"
+                        style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}
+                        dangerouslySetInnerHTML={{ __html: cleanHtml }}
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                        Our botanical specimens are hand-selected from specialized nursery farm stocks in Bangladesh. Acclimatized to domestic indoor humidity levels, each specimen showcases healthy foliage pigmentation, robust stem structures, and strong root health.
+                      </p>
+                    );
+                  })()}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
-                      <Sprout className="w-4 h-4 text-[#7BAE37]" />
-                      Air Purification &amp; Aesthetics
-                    </h4>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      Assists in filtering airborne particles and volatile organic compounds while introducing natural organic contours into living or office spaces.
-                    </p>
-                  </div>
+                {/* 2 Feature Cards */}
+                {productPageConfig.featureCards?.isEnabled !== false && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
+                        <Sprout className="w-4 h-4 text-[#7BAE37]" />
+                        {productPageConfig.featureCards?.card1?.title || "Air Purification & Aesthetics"}
+                      </h4>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        {productPageConfig.featureCards?.card1?.description ||
+                          "Assists in filtering airborne particles and volatile organic compounds while introducing natural organic contours into living or office spaces."}
+                      </p>
+                    </div>
 
-                  <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
-                      <RotateCcw className="w-4 h-4 text-[#7BAE37]" />
-                      Safe Nursery Packaging
-                    </h4>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      Enclosed in custom shock-absorbing biodegradable packaging with moisture root-capsules ensuring hydration throughout national transit.
-                    </p>
+                    <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
+                        <RotateCcw className="w-4 h-4 text-[#7BAE37]" />
+                        {productPageConfig.featureCards?.card2?.title || "Safe Nursery Packaging"}
+                      </h4>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        {productPageConfig.featureCards?.card2?.description ||
+                          "Enclosed in custom shock-absorbing biodegradable packaging with moisture root-capsules ensuring hydration throughout national transit."}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -872,6 +1095,11 @@ export default function ProductDetailClient({ params, id: directId }) {
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
                       Light &amp; Location
                     </h4>
+                    {product.careBadges?.sunlight && (
+                      <div className="inline-block px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[11px] font-bold">
+                        {product.careBadges.sunlight}
+                      </div>
+                    )}
                     <p className="text-xs text-gray-600 leading-relaxed">
                       Position in bright indirect sunlight. Avoid placing directly in front of blazing western midday sun or cold drafts from air conditioning vents.
                     </p>
@@ -884,6 +1112,11 @@ export default function ProductDetailClient({ params, id: directId }) {
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
                       Hydration &amp; Watering
                     </h4>
+                    {product.careBadges?.water && (
+                      <div className="inline-block px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 text-[11px] font-bold">
+                        {product.careBadges.water}
+                      </div>
+                    )}
                     <p className="text-xs text-gray-600 leading-relaxed">
                       Water thoroughly once the top 1–2 inches of soil feel dry. Allow excess water to drain out of the pot base to avoid standing water.
                     </p>
@@ -894,8 +1127,20 @@ export default function ProductDetailClient({ params, id: directId }) {
                       <Sprout className="w-4 h-4" />
                     </div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Nutrient Schedule
+                      Safety &amp; Difficulty
                     </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {product.careBadges?.petSafe && (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold">
+                          {product.careBadges.petSafe}
+                        </span>
+                      )}
+                      {product.careBadges?.difficulty && (
+                        <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-900 text-[11px] font-bold">
+                          {product.careBadges.difficulty}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-600 leading-relaxed">
                       Apply organic vermicompost or balanced NPK water-soluble fertilizer every 4 weeks during active growth (March to October).
                     </p>
@@ -927,18 +1172,17 @@ export default function ProductDetailClient({ params, id: directId }) {
                       <span className="text-4xl font-extrabold text-[#1E3F20] font-serif block">
                         {reviewsStats.totalReviews > 0
                           ? reviewsStats.averageRating.toFixed(1)
-                          : product.averageRating
-                          ? product.averageRating.toFixed(1)
-                          : "5.0"}
+                          : "0.0"}
                       </span>
-                      <div className="flex items-center gap-0.5 text-amber-400 mt-1">
+                      <div className="flex items-center gap-0.5 mt-1">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={`score-star-${i}`}
                             className={`w-3.5 h-3.5 ${
-                              i < Math.round(reviewsStats.averageRating || product.averageRating || 5)
+                              reviewsStats.totalReviews > 0 &&
+                              i < Math.round(reviewsStats.averageRating || 0)
                                 ? "fill-amber-400 text-amber-400"
-                                : "fill-gray-200 text-gray-200"
+                                : "text-gray-300"
                             }`}
                           />
                         ))}
@@ -1271,109 +1515,44 @@ export default function ProductDetailClient({ params, id: directId }) {
         </div>
 
         {/* ─── 4. RELATED PRODUCTS & CUSTOM COLLECTION ───────────────────────── */}
-        <div className="mt-20 space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gray-100 pb-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-[#7BAE37]">
-                Curated Companions
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-serif mt-1">
-                Related Plants &amp; Gardening Tools
-              </h2>
+        {productPageConfig.relatedSection?.isEnabled !== false && (
+          <div className="mt-20 space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#7BAE37]">
+                  {productPageConfig.relatedSection?.badge || "Curated Companions"}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-serif mt-1">
+                  {productPageConfig.relatedSection?.title || "Related Plants & Gardening Tools"}
+                </h2>
+              </div>
+              <Link
+                href={productPageConfig.relatedSection?.viewAllUrl || "/#products"}
+                className="text-xs font-semibold text-[#2D5A27] hover:text-[#7BAE37] flex items-center gap-1 transition-colors"
+              >
+                <span>Explore All Products</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-            <Link
-              href="/#products"
-              className="text-xs font-semibold text-[#2D5A27] hover:text-[#7BAE37] flex items-center gap-1 transition-colors"
-            >
-              <span>Explore All Products</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {relatedProducts.length > 0
-              ? relatedProducts.map((rel, idx) => {
-                const relPrice = rel.price || 0;
-                const relOrig = Math.round(relPrice * 1.34);
-                const relImg = rel.images?.[0] || rel.image || FALLBACK_IMG;
-                return (
-                  <div
-                    key={rel._id || `rel-prod-${idx}`}
-                    className="group bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between"
-                  >
-                    <div className="relative aspect-square bg-[#FBFBFA] overflow-hidden">
-                      <span className="absolute top-3 left-3 z-10 bg-[#2D5A27] text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-xs">
-                        -34%
-                      </span>
-                      <Link href={`/products/${rel._id}`} className="block relative w-full h-full">
-                        <Image
-                          src={relImg}
-                          alt={rel.title}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </Link>
-                    </div>
-
-                    <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-1 text-amber-400 mb-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={`rel-star-${rel._id}-${i}`} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                          ))}
-                        </div>
-                        <Link
-                          href={`/products/${rel._id}`}
-                          className="font-bold text-xs text-gray-900 hover:text-[#2D5A27] line-clamp-1 transition-colors"
-                        >
-                          {rel.title}
-                        </Link>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-sm font-extrabold text-[#2D5A27]">
-                            ৳{relPrice.toLocaleString("en-US")}
-                          </span>
-                          <del className="text-[10px] text-gray-400">
-                            ৳{relOrig.toLocaleString("en-US")}
-                          </del>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addItem({
-                              _id: rel._id,
-                              title: rel.title,
-                              price: rel.price,
-                              images: [relImg],
-                              image: relImg,
-                              quantity: 1,
-                            });
-                            message.success({ content: `Added ${rel.title} to cart!`, duration: 2 });
-                            openCart();
-                          }}
-                          aria-label="Add related item to cart"
-                          className="p-2 rounded-xl bg-[#F1F8E9] hover:bg-[#7BAE37] text-[#2D5A27] hover:text-white transition-all shadow-2xs cursor-pointer"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.length > 0
+                ? relatedProducts.map((rel, idx) => (
+                    <ProductCard
+                      key={rel._id || `rel-prod-${idx}`}
+                      product={rel}
+                    />
+                  ))
+                : [1, 2, 3, 4].map((n) => (
+                  <div key={`skeleton-${n}`} className="bg-white rounded-3xl p-4 border border-gray-100 animate-pulse space-y-3">
+                    <div className="aspect-square bg-gray-100 rounded-2xl" />
+                    <div className="h-4 bg-gray-100 rounded-full w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded-full w-1/2" />
                   </div>
-                );
-              })
-              : [1, 2, 3, 4].map((n) => (
-                <div key={`skeleton-${n}`} className="bg-white rounded-3xl p-4 border border-gray-100 animate-pulse space-y-3">
-                  <div className="aspect-square bg-gray-100 rounded-2xl" />
-                  <div className="h-4 bg-gray-100 rounded-full w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded-full w-1/2" />
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 

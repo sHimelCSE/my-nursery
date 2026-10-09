@@ -30,8 +30,10 @@ const DEFAULT_COLLECTION_IMAGE =
 export default async function CollectionsPage() {
   await dbConnect();
 
-  // Fetch all categories
-  const categories = await Category.find({})
+  // Fetch only listed categories (isUnlisted !== true)
+  const categories = await Category.find({
+    isUnlisted: { $ne: true },
+  })
     .sort({ order: 1, createdAt: 1 })
     .lean();
 

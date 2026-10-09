@@ -10,7 +10,7 @@ import {
   LockOutlined, KeyOutlined, EyeOutlined, EyeInvisibleOutlined,
 } from "@ant-design/icons";
 import { App } from "antd";
-import { Sprout, Truck, Phone, Banknote, AlertCircle } from "lucide-react";
+import { Sprout, Truck, Phone, Banknote, AlertCircle, Tag } from "lucide-react";
 import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 
 export default function OrderSuccessPage({ params }) {
@@ -189,16 +189,6 @@ export default function OrderSuccessPage({ params }) {
     }
   };
 
-  const confettiItems = CONFETTI_EMOJIS.map((emoji, i) => ({
-    emoji,
-    style: {
-      left: `${10 + i * 11}%`,
-      x: (i % 2 === 0 ? 1 : -1) * (10 + i * 4),
-      rotate: (i % 2 === 0 ? 15 : -20) * (i * 0.5),
-      delay: 0.1 + i * 0.12,
-    },
-  }));
-
   const shipping = order?.shippingAddress;
   const rawId = order?._id || id || "";
   const invoiceNumber = `ORD-${rawId.slice(-6).toUpperCase()}`;
@@ -244,11 +234,6 @@ export default function OrderSuccessPage({ params }) {
       `}</style>
 
       <div className="relative max-w-3xl mx-auto">
-
-        {/* Floating nature confetti leaves */}
-        {showConfetti && confettiItems.map(({ emoji, style }, i) => (
-          <FloatingEmoji key={i} emoji={emoji} style={style} />
-        ))}
 
         {/* ── Celebratory Header Banner (hidden on print) ── */}
         <motion.div
@@ -519,12 +504,24 @@ export default function OrderSuccessPage({ params }) {
                       </span>
                     </div>
 
+                    {order?.discountAmount > 0 && (
+                      <div className="flex justify-between text-[13px] text-[#2D6A4F] font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5" />
+                          <span>
+                            Discount {order?.appliedCouponCode ? `(${order.appliedCouponCode})` : ""}
+                          </span>
+                        </span>
+                        <span>-৳{order.discountAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-[13px] text-[#6B7280]">
                       <span>
                         Delivery Charge ({isDhaka ? "Inside Dhaka ৳60" : "Outside Dhaka ৳120"})
                       </span>
                       <span className="font-medium text-[#1A2E22]">
-                        {order?.deliveryCharge === 0 ? "Free" : `৳${order?.deliveryCharge}`}
+                        {order?.deliveryCharge === 0 || order?.isFreeShipping ? "Free Delivery" : `৳${order?.deliveryCharge}`}
                       </span>
                     </div>
 

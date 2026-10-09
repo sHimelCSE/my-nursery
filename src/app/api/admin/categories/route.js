@@ -111,7 +111,7 @@ export async function POST(request) {
 
     await dbConnect();
     const body = await request.json();
-    const { name, slug, description, image, showInNavbar, order } = body;
+    const { name, slug, description, image, showInNavbar, order, isUnlisted } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -148,6 +148,7 @@ export async function POST(request) {
       image: (image || "").trim(),
       showInNavbar: showInNavbar !== undefined ? Boolean(showInNavbar) : true,
       order: nextOrder,
+      isUnlisted: Boolean(isUnlisted),
     });
 
     return NextResponse.json(
@@ -182,7 +183,7 @@ export async function PUT(request) {
 
     await dbConnect();
     const body = await request.json();
-    const { _id, id, name, slug, description, image, showInNavbar, order } = body;
+    const { _id, id, name, slug, description, image, showInNavbar, order, isUnlisted } = body;
 
     const targetId = _id || id;
     if (!targetId) {
@@ -205,6 +206,7 @@ export async function PUT(request) {
     if (image !== undefined) updateFields.image = image.trim();
     if (showInNavbar !== undefined) updateFields.showInNavbar = Boolean(showInNavbar);
     if (order !== undefined) updateFields.order = Number(order);
+    if (isUnlisted !== undefined) updateFields.isUnlisted = Boolean(isUnlisted);
 
     const updated = await Category.findByIdAndUpdate(targetId, updateFields, {
       new: true,

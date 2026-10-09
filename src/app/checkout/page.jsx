@@ -11,6 +11,18 @@ import {
   FileTextOutlined, LoadingOutlined, CheckCircleOutlined,
   ArrowLeftOutlined, CompassOutlined, MailOutlined,
 } from "@ant-design/icons";
+import {
+  Banknote,
+  Smartphone,
+  Tag,
+  X,
+  ShieldCheck,
+  RotateCcw,
+  Truck,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
 import useCartStore from "@/lib/cartStore";
 import { lookupPostcode, getDistricts, getDivisions } from "@/lib/postcodeHelper";
 
@@ -22,13 +34,13 @@ const PAYMENT_OPTIONS = [
     id: "cod",
     label: "Cash on Delivery",
     desc: "Pay cash when your order arrives at your door.",
-    icon: "💵",
+    iconNode: <Banknote className="w-6 h-6 text-[#2D6A4F]" />,
   },
   {
     id: "bkash",
     label: "bKash / Nagad",
     desc: "Manual payment — we will confirm via call or SMS after order.",
-    icon: "📱",
+    iconNode: <Smartphone className="w-6 h-6 text-[#2D6A4F]" />,
   },
 ];
 
@@ -66,6 +78,17 @@ export default function CheckoutPage() {
   const items = useCartStore((s) => s.items);
   const getTotalPrice = useCartStore((s) => s.getTotalPrice);
   const clearCart = useCartStore((s) => s.clearCart);
+
+  const appliedDiscounts = useCartStore((s) => s.appliedDiscounts || []);
+  const discountTotal = useCartStore((s) => s.discountTotal || 0);
+  const isFreeShipping = useCartStore((s) => s.isFreeShipping || false);
+  const applyCoupon = useCartStore((s) => s.applyCoupon);
+  const removeCoupon = useCartStore((s) => s.removeCoupon);
+  const setCustomerEmail = useCartStore((s) => s.setCustomerEmail);
+
+  const [checkoutPromoInput, setCheckoutPromoInput] = useState("");
+  const [applyingCheckoutPromo, setApplyingCheckoutPromo] = useState(false);
+  const [checkoutPromoMsg, setCheckoutPromoMsg] = useState({ type: "", text: "" });
 
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -111,19 +134,42 @@ export default function CheckoutPage() {
   if (!mounted) return null;
   if (!orderPlacedRef.current && items.length === 0) return null;
 
-  // ── Delivery calculation ─────────────────────────────
-  // ৳60 if District is 'Dhaka', otherwise ৳120 (Free for orders >= ৳1,000)
+  // ── Delivery & Total calculation ──────────────────────
+  // ৳60 if District is 'Dhaka', otherwise ৳120 (Free for orders >= ৳1,000 or Free Shipping coupon)
   const subtotal = getTotalPrice();
   const isDhaka = form.district?.trim().toLowerCase() === "dhaka";
   const standardDeliveryFee = !form.district ? 60 : isDhaka ? 60 : 120;
-  const deliveryCharge = subtotal >= 1000 ? 0 : standardDeliveryFee;
-  const total = subtotal + deliveryCharge;
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const deliveryCharge = (subtotal >= 1000 || isFreeShipping) ? 0 : standardDeliveryFee;
+  const total = Math.max(0, subtotal - discountTotal) + deliveryCharge;
+  const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 1), 0);
 
   // ── Form handling ────────────────────────────────────
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
+    if (key === "email" && setCustomerEmail) {
+      setCustomerEmail(value);
+    }
+  };
+
+  const handleApplyCheckoutCoupon = async (e) => {
+    if (e) e.preventDefault();
+    if (!checkoutPromoInput.trim()) return;
+    setApplyingCheckoutPromo(true);
+    setCheckoutPromoMsg({ type: "", text: "" });
+    try {
+      const res = await applyCoupon(checkoutPromoInput.trim(), form.email);
+      if (res.success) {
+        setCheckoutPromoMsg({ type: "success", text: res.message || "Coupon applied!" });
+        setCheckoutPromoInput("");
+      } else {
+        setCheckoutPromoMsg({ type: "error", text: res.message || "Invalid coupon" });
+      }
+    } catch {
+      setCheckoutPromoMsg({ type: "error", text: "Failed to apply coupon." });
+    } finally {
+      setApplyingCheckoutPromo(false);
+    }
   };
 
   // Smart Postal Code Auto-fill
@@ -235,6 +281,9 @@ export default function CheckoutPage() {
             quantity: item.quantity,
           })),
           subtotal,
+          discountAmount: discountTotal,
+          appliedCouponCode: appliedDiscounts.map((d) => d.code).join(", "),
+          isFreeShipping,
           deliveryCharge,
           totalPrice: total,
         }),
@@ -535,7 +584,7 @@ export default function CheckoutPage() {
                         onChange={() => setPayment(opt.id)}
                         className="sr-only"
                       />
-                      <span className="text-2xl shrink-0 mt-0.5">{opt.icon}</span>
+                      <span className="shrink-0 mt-0.5">{opt.iconNode}</span>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-[14px] font-bold text-[#1A2E22]">{opt.label}</p>
@@ -600,32 +649,122 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* Promo Code Box in Checkout Order Summary */}
+                <div className="px-5 py-3 border-t border-gray-100 bg-[#FAFBF9] space-y-2">
+                  <form onSubmit={handleApplyCheckoutCoupon} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Promo code (e.g. WELCOME10)"
+                        value={checkoutPromoInput}
+                        onChange={(e) => {
+                          setCheckoutPromoInput(e.target.value.toUpperCase());
+                          setCheckoutPromoMsg({ type: "", text: "" });
+                        }}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 uppercase font-mono tracking-wider"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={applyingCheckoutPromo || !checkoutPromoInput.trim()}
+                      className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1E3F20] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0 cursor-pointer"
+                    >
+                      {applyingCheckoutPromo ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <span>Apply</span>
+                      )}
+                    </button>
+                  </form>
+
+                  {checkoutPromoMsg.text && (
+                    <p
+                      className={`text-[11px] font-medium flex items-center gap-1 ${
+                        checkoutPromoMsg.type === "success" ? "text-[#2D6A4F]" : "text-red-500"
+                      }`}
+                    >
+                      {checkoutPromoMsg.type === "success" ? (
+                        <CheckCircle2 className="w-3 h-3" />
+                      ) : (
+                        <AlertCircle className="w-3 h-3" />
+                      )}
+                      <span>{checkoutPromoMsg.text}</span>
+                    </p>
+                  )}
+
+                  {appliedDiscounts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {appliedDiscounts.map((disc) => (
+                        <div
+                          key={disc.code}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#EBF0E6] border border-emerald-300 text-[#1E3F20] text-xs font-semibold"
+                        >
+                          <Tag className="w-3 h-3 text-[#2D6A4F]" />
+                          <span className="font-mono font-bold">{disc.code}</span>
+                          {disc.discountAmount > 0 && (
+                            <span className="text-[11px] text-[#2D6A4F] font-bold">
+                              (-৳{disc.discountAmount.toLocaleString()})
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeCoupon(disc.code)}
+                            className="p-0.5 hover:text-red-600 transition-colors cursor-pointer rounded-full"
+                            title="Remove coupon"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Totals */}
                 <div className="px-6 py-4 border-t border-gray-100 space-y-2.5">
                   <div className="flex justify-between text-[13px] text-[#6B7280]">
                     <span>Subtotal</span>
                     <span className="font-semibold text-[#1A2E22]">৳{subtotal.toLocaleString()}</span>
                   </div>
+
+                  {discountTotal > 0 && (
+                    <div className="flex justify-between text-[13px] text-[#2D6A4F] font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Discount Applied</span>
+                      </span>
+                      <span>-৳{discountTotal.toLocaleString()}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-[13px] text-[#6B7280]">
                     <span>Delivery Charge</span>
-                    <span className={`font-semibold ${deliveryCharge === 0 ? "text-[#40916C]" : "text-[#1A2E22]"}`}>
+                    <span className={`font-semibold ${deliveryCharge === 0 ? "text-[#2D6A4F] font-bold" : "text-[#1A2E22]"}`}>
                       {deliveryCharge === 0 ? (
-                        "Free 🎉"
+                        "Free Shipping"
                       ) : (
                         `৳${deliveryCharge} (${isDhaka ? "Inside Dhaka" : "Outside Dhaka"})`
                       )}
                     </span>
                   </div>
+
                   <div className="flex justify-between text-[15px] font-extrabold text-[#1A2E22] border-t border-gray-100 pt-2.5">
                     <span>Grand Total</span>
-                    <span className="text-[#2D6A4F]">৳{total.toLocaleString()}</span>
+                    <span className="text-[#2D6A4F] text-base font-black">৳{total.toLocaleString()}</span>
                   </div>
 
                   {/* Payment badge */}
                   <div className="flex items-center gap-2 bg-[#F4F7F4] rounded-xl px-3 py-2 mt-1">
-                    <span className="text-base">{PAYMENT_OPTIONS.find(o => o.id === paymentMethod)?.icon}</span>
+                    <span className="text-[#2D6A4F]">
+                      {paymentMethod === "cod" ? (
+                        <Banknote className="w-4 h-4" />
+                      ) : (
+                        <Smartphone className="w-4 h-4" />
+                      )}
+                    </span>
                     <span className="text-[12px] text-[#4A5568] font-medium">
-                      {PAYMENT_OPTIONS.find(o => o.id === paymentMethod)?.label}
+                      {PAYMENT_OPTIONS.find((o) => o.id === paymentMethod)?.label}
                     </span>
                   </div>
                 </div>
@@ -637,7 +776,7 @@ export default function CheckoutPage() {
                     whileTap={{ scale: 0.97 }}
                     disabled={submitting}
                     id="place-order-btn"
-                    className="w-full py-4 rounded-2xl bg-[#2D6A4F] text-white font-bold text-[15px] hover:bg-[#40916C] disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md shadow-green-900/15 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl bg-[#2D6A4F] text-white font-bold text-[15px] hover:bg-[#1E3F20] disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md shadow-green-900/15 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {submitting ? (
                       <>
@@ -652,10 +791,19 @@ export default function CheckoutPage() {
                     )}
                   </motion.button>
 
-                  <div className="flex items-center justify-center gap-4 mt-4">
-                    {["🔒 Secure", "✅ Easy Returns", "🚚 Fast Delivery"].map((b) => (
-                      <span key={b} className="text-[11px] text-[#9CA3AF]">{b}</span>
-                    ))}
+                  <div className="flex items-center justify-center gap-4 mt-4 text-[11px] text-[#6B7280]">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <span>Secure Payment</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <RotateCcw className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <span>Easy Returns</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Truck className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <span>Fast Delivery</span>
+                    </span>
                   </div>
                 </div>
               </div>

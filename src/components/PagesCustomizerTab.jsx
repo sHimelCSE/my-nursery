@@ -17,11 +17,13 @@ import {
   Layers,
   CheckCircle2,
   PackageCheck,
-  ExternalLink,
-  Clock,
   MapPin,
   Stethoscope,
   Info,
+  Package,
+  CreditCard,
+  Truck,
+  Headphones,
 } from "lucide-react";
 import RichTextEditor from "@/components/editor/RichTextEditor";
 import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
@@ -119,6 +121,51 @@ export default function PagesCustomizerTab({ activePage = "about", onPageChange 
                   : prev.policyPages.refund.steps,
             },
           },
+          productPage: {
+            ...prev.productPage,
+            ...(json.data.productPage || {}),
+            featureCards: {
+              ...prev.productPage.featureCards,
+              ...(json.data.productPage?.featureCards || {}),
+              card1: {
+                ...prev.productPage.featureCards.card1,
+                ...(json.data.productPage?.featureCards?.card1 || {}),
+              },
+              card2: {
+                ...prev.productPage.featureCards.card2,
+                ...(json.data.productPage?.featureCards?.card2 || {}),
+              },
+            },
+            trustBadges: {
+              ...prev.productPage.trustBadges,
+              ...(json.data.productPage?.trustBadges || {}),
+              badge1: {
+                ...prev.productPage.trustBadges.badge1,
+                ...(json.data.productPage?.trustBadges?.badge1 || {}),
+              },
+              badge2: {
+                ...prev.productPage.trustBadges.badge2,
+                ...(json.data.productPage?.trustBadges?.badge2 || {}),
+              },
+              badge3: {
+                ...prev.productPage.trustBadges.badge3,
+                ...(json.data.productPage?.trustBadges?.badge3 || {}),
+              },
+            },
+            paymentBadges: {
+              ...prev.productPage.paymentBadges,
+              ...(json.data.productPage?.paymentBadges || {}),
+              methods:
+                Array.isArray(json.data.productPage?.paymentBadges?.methods) &&
+                json.data.productPage.paymentBadges.methods.length > 0
+                  ? json.data.productPage.paymentBadges.methods
+                  : prev.productPage.paymentBadges.methods,
+            },
+            relatedSection: {
+              ...prev.productPage.relatedSection,
+              ...(json.data.productPage?.relatedSection || {}),
+            },
+          },
         }));
       }
     } catch (err) {
@@ -199,6 +246,613 @@ export default function PagesCustomizerTab({ activePage = "about", onPageChange 
           </button>
         </div>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          PAGE: PRODUCT DETAILS PAGE CUSTOMIZER (4 SECTIONS)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {activePage === "product" && (
+        <div className="space-y-5">
+          {/* Section 1: Description Tab & 2 Feature Cards Customizer */}
+          <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-2xs overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xs font-bold">
+                  1
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Description Tab &amp; Feature Cards Customizer
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Default tab heading and dual trust feature cards under product description
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Feature Cards:</span>
+                <Switch
+                  checked={config.productPage?.featureCards?.isEnabled}
+                  onChange={(checked) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        featureCards: {
+                          ...config.productPage?.featureCards,
+                          isEnabled: checked,
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Default Description Tab Heading
+              </label>
+              <input
+                type="text"
+                value={config.productPage?.defaultTabTitle || ""}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    productPage: {
+                      ...config.productPage,
+                      defaultTabTitle: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Botanical Background & Characteristics"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white text-slate-800"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {/* Feature Card 1 */}
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-emerald-100/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#2D6A4F] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sprout className="w-4 h-4" /> Feature Card #1
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.featureCards?.card1?.title || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          featureCards: {
+                            ...config.productPage?.featureCards,
+                            card1: {
+                              ...config.productPage?.featureCards?.card1,
+                              title: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={config.productPage?.featureCards?.card1?.description || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          featureCards: {
+                            ...config.productPage?.featureCards,
+                            card1: {
+                              ...config.productPage?.featureCards?.card1,
+                              description: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Feature Card 2 */}
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-emerald-100/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#2D6A4F] uppercase tracking-wider flex items-center gap-1.5">
+                    <RotateCcw className="w-4 h-4" /> Feature Card #2
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.featureCards?.card2?.title || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          featureCards: {
+                            ...config.productPage?.featureCards,
+                            card2: {
+                              ...config.productPage?.featureCards?.card2,
+                              title: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={config.productPage?.featureCards?.card2?.description || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          featureCards: {
+                            ...config.productPage?.featureCards,
+                            card2: {
+                              ...config.productPage?.featureCards?.card2,
+                              description: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Trust Badges Strip */}
+          <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-2xs overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xs font-bold">
+                  2
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Trust Badges Strip (Below Add to Cart)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    3 trust assurance pillars displayed in the right product column
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Enable Strip:</span>
+                <Switch
+                  checked={config.productPage?.trustBadges?.isEnabled}
+                  onChange={(checked) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        trustBadges: {
+                          ...config.productPage?.trustBadges,
+                          isEnabled: checked,
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Badge 1 */}
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-emerald-100/60 space-y-2.5">
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-[#2D6A4F]" /> Badge #1 (Shipping)
+                </span>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Title</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge1?.title || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge1: {
+                              ...config.productPage?.trustBadges?.badge1,
+                              title: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Subtext</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge1?.subtext || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge1: {
+                              ...config.productPage?.trustBadges?.badge1,
+                              subtext: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Badge 2 */}
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-emerald-100/60 space-y-2.5">
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <Headphones className="w-4 h-4 text-sky-600" /> Badge #2 (Support)
+                </span>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Title</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge2?.title || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge2: {
+                              ...config.productPage?.trustBadges?.badge2,
+                              title: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Subtext</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge2?.subtext || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge2: {
+                              ...config.productPage?.trustBadges?.badge2,
+                              subtext: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Badge 3 */}
+              <div className="p-4 rounded-2xl bg-[#FAFBF9] border border-emerald-100/60 space-y-2.5">
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" /> Badge #3 (Payment)
+                </span>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Title</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge3?.title || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge3: {
+                              ...config.productPage?.trustBadges?.badge3,
+                              title: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Subtext</label>
+                  <input
+                    type="text"
+                    value={config.productPage?.trustBadges?.badge3?.subtext || ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        productPage: {
+                          ...config.productPage,
+                          trustBadges: {
+                            ...config.productPage?.trustBadges,
+                            badge3: {
+                              ...config.productPage?.trustBadges?.badge3,
+                              subtext: e.target.value,
+                            },
+                          },
+                        },
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Guaranteed Safe Checkout Methods */}
+          <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-2xs overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xs font-bold">
+                  3
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Guaranteed Safe Checkout Payment Pills
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Toggle and manage payment gateway badges (bKash, Nagad, VISA, Mastercard, COD)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Enable Payment Badges:</span>
+                <Switch
+                  checked={config.productPage?.paymentBadges?.isEnabled}
+                  onChange={(checked) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        paymentBadges: {
+                          ...config.productPage?.paymentBadges,
+                          isEnabled: checked,
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                Accepted Payment Methods (Click pill to remove or use input below to add)
+              </label>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                {(config.productPage?.paymentBadges?.methods || []).map((method, idx) => (
+                  <span
+                    key={`pm-${idx}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-[#2D6A4F] border border-emerald-200/70 text-xs font-bold"
+                  >
+                    <span>{method}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextMethods = (config.productPage?.paymentBadges?.methods || []).filter(
+                          (_, i) => i !== idx
+                        );
+                        setConfig({
+                          ...config,
+                          productPage: {
+                            ...config.productPage,
+                            paymentBadges: {
+                              ...config.productPage?.paymentBadges,
+                              methods: nextMethods,
+                            },
+                          },
+                        });
+                      }}
+                      className="w-4 h-4 rounded-full hover:bg-emerald-200 flex items-center justify-center cursor-pointer transition-colors"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              {/* Add Custom Method input */}
+              <div className="flex items-center gap-2 max-w-md">
+                <input
+                  type="text"
+                  id="new-payment-method-input"
+                  placeholder="e.g. Upay, Rocket, AMEX"
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 text-xs bg-white"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = e.target.value.trim();
+                      if (val) {
+                        const current = config.productPage?.paymentBadges?.methods || [];
+                        if (!current.includes(val)) {
+                          setConfig({
+                            ...config,
+                            productPage: {
+                              ...config.productPage,
+                              paymentBadges: {
+                                ...config.productPage?.paymentBadges,
+                                methods: [...current, val],
+                              },
+                            },
+                          });
+                        }
+                        e.target.value = "";
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("new-payment-method-input");
+                    const val = el?.value?.trim();
+                    if (val) {
+                      const current = config.productPage?.paymentBadges?.methods || [];
+                      if (!current.includes(val)) {
+                        setConfig({
+                          ...config,
+                          productPage: {
+                            ...config.productPage,
+                            paymentBadges: {
+                              ...config.productPage?.paymentBadges,
+                              methods: [...current, val],
+                            },
+                          },
+                        });
+                      }
+                      el.value = "";
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#2D6A4F] text-white text-xs font-bold hover:bg-[#1B4332] cursor-pointer"
+                >
+                  + Add Method
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Related Products Section Customizer */}
+          <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-2xs overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2D6A4F] flex items-center justify-center text-xs font-bold">
+                  4
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Related Products Section
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Curated companion items row at the bottom of the product page
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Enable Section:</span>
+                <Switch
+                  checked={config.productPage?.relatedSection?.isEnabled}
+                  onChange={(checked) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        relatedSection: {
+                          ...config.productPage?.relatedSection,
+                          isEnabled: checked,
+                        },
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Badge</label>
+                <input
+                  type="text"
+                  value={config.productPage?.relatedSection?.badge || ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        relatedSection: {
+                          ...config.productPage?.relatedSection,
+                          badge: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Heading Title</label>
+                <input
+                  type="text"
+                  value={config.productPage?.relatedSection?.title || ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        relatedSection: {
+                          ...config.productPage?.relatedSection,
+                          title: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">View All Link URL</label>
+                <input
+                  type="text"
+                  value={config.productPage?.relatedSection?.viewAllUrl || ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      productPage: {
+                        ...config.productPage,
+                        relatedSection: {
+                          ...config.productPage?.relatedSection,
+                          viewAllUrl: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                  className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
           PAGE 1: ABOUT US PAGE (5 SECTIONS)

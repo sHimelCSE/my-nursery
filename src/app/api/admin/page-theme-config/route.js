@@ -118,6 +118,52 @@ export async function PUT(request) {
       };
     }
 
+    if (body.productPage) {
+      config.productPage = {
+        ...(config.productPage?.toObject?.() || {}),
+        ...body.productPage,
+        featureCards: {
+          ...(config.productPage?.featureCards?.toObject?.() || {}),
+          ...(body.productPage.featureCards || {}),
+          card1: {
+            ...(config.productPage?.featureCards?.card1?.toObject?.() || {}),
+            ...(body.productPage.featureCards?.card1 || {}),
+          },
+          card2: {
+            ...(config.productPage?.featureCards?.card2?.toObject?.() || {}),
+            ...(body.productPage.featureCards?.card2 || {}),
+          },
+        },
+        trustBadges: {
+          ...(config.productPage?.trustBadges?.toObject?.() || {}),
+          ...(body.productPage.trustBadges || {}),
+          badge1: {
+            ...(config.productPage?.trustBadges?.badge1?.toObject?.() || {}),
+            ...(body.productPage.trustBadges?.badge1 || {}),
+          },
+          badge2: {
+            ...(config.productPage?.trustBadges?.badge2?.toObject?.() || {}),
+            ...(body.productPage.trustBadges?.badge2 || {}),
+          },
+          badge3: {
+            ...(config.productPage?.trustBadges?.badge3?.toObject?.() || {}),
+            ...(body.productPage.trustBadges?.badge3 || {}),
+          },
+        },
+        paymentBadges: {
+          ...(config.productPage?.paymentBadges?.toObject?.() || {}),
+          ...(body.productPage.paymentBadges || {}),
+          methods: Array.isArray(body.productPage.paymentBadges?.methods)
+            ? body.productPage.paymentBadges.methods
+            : config.productPage?.paymentBadges?.methods || [],
+        },
+        relatedSection: {
+          ...(config.productPage?.relatedSection?.toObject?.() || {}),
+          ...(body.productPage.relatedSection || {}),
+        },
+      };
+    }
+
     await config.save();
 
     return NextResponse.json({

@@ -149,4 +149,48 @@ export const DEFAULT_PAGE_THEME_CONFIG = {
       ],
     },
   },
+  productPage: {
+    defaultTabTitle: "Botanical Background & Characteristics",
+    featureCards: {
+      isEnabled: true,
+      card1: {
+        icon: "Sprout",
+        title: "Air Purification & Aesthetics",
+        description:
+          "Assists in filtering airborne particles and volatile organic compounds while introducing natural organic contours into living or office spaces.",
+      },
+      card2: {
+        icon: "RotateCcw",
+        title: "Safe Nursery Packaging",
+        description:
+          "Enclosed in custom shock-absorbing biodegradable packaging with moisture root-capsules ensuring hydration throughout national transit.",
+      },
+    },
+    trustBadges: {
+      isEnabled: true,
+      badge1: {
+        title: "Free Shipping",
+        subtext: "Over ৳1000 order",
+      },
+      badge2: {
+        title: "24/7 Care Support",
+        subtext: "Plant care helpline",
+      },
+      badge3: {
+        title: "Safe Payment",
+        subtext: "COD Available",
+      },
+    },
+    paymentBadges: {
+      isEnabled: true,
+      methods: ["bKash", "Nagad", "VISA", "Mastercard", "Cash on Delivery"],
+    },
+    relatedSection: {
+      isEnabled: true,
+      badge: "Curated Companions",
+      title: "Related Plants & Gardening Tools",
+      viewAllUrl: "/#products",
+    },
+  },
 };
+

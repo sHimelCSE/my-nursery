@@ -8,9 +8,12 @@ import User from "@/models/User";
 import Product from "@/models/Product";
 import Notification from "@/models/Notification";
 
+import Discount from "@/models/Discount";
+import { evaluateDiscountRule } from "@/lib/discountEngine";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/orders
-// Body: { shippingAddress, paymentMethod, notes, products, subtotal, deliveryCharge, totalPrice, email }
+// Body: { shippingAddress, paymentMethod, notes, products, subtotal, deliveryCharge, totalPrice, email, appliedCouponCode }
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(request) {
   try {
@@ -27,6 +30,7 @@ export async function POST(request) {
       totalPrice,
       userId,
       email: directEmail,
+      appliedCouponCode = "",
     } = body;
 
     // ── Validation ──────────────────────────────────────
@@ -100,15 +104,51 @@ export async function POST(request) {
       }
     }
 
-    // ── Server-side total calculation ───────────────────
+    // ── Server-side total & discount calculation ────────
     const calculatedSubtotal = products.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+      (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
       0
     );
+
+    let validatedDiscountAmount = 0;
+    let validatedIsFreeShipping = false;
+    const matchedDiscounts = [];
+
+    if (appliedCouponCode && typeof appliedCouponCode === "string") {
+      const codeList = appliedCouponCode
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean);
+
+      for (const singleCode of codeList) {
+        const discDoc = await Discount.findOne({ code: singleCode });
+        if (discDoc) {
+          const evalRes = await evaluateDiscountRule(
+            discDoc,
+            products,
+            cleanEmail,
+            calculatedSubtotal
+          );
+          if (evalRes.valid) {
+            validatedDiscountAmount += evalRes.discountAmount || 0;
+            if (evalRes.isFreeShipping) validatedIsFreeShipping = true;
+            matchedDiscounts.push(discDoc);
+          }
+        }
+      }
+    }
+
+    validatedDiscountAmount = Math.min(validatedDiscountAmount, calculatedSubtotal);
+
     const isInsideDhaka = city === "Dhaka" || shippingAddress.district === "Dhaka";
     const calculatedDelivery =
-      calculatedSubtotal >= 1000 ? 0 : isInsideDhaka ? 60 : 120;
-    const calculatedTotal = calculatedSubtotal + calculatedDelivery;
+      calculatedSubtotal >= 1000 || validatedIsFreeShipping
+        ? 0
+        : isInsideDhaka
+        ? 60
+        : 120;
+    const calculatedTotal =
+      Math.max(0, calculatedSubtotal - validatedDiscountAmount) + calculatedDelivery;
 
     // ── Create order in MongoDB ─────────────────────────
     const order = await Order.create({
@@ -133,13 +173,25 @@ export async function POST(request) {
         price:     item.price,
         quantity:  item.quantity,
       })),
-      subtotal:       calculatedSubtotal,
-      deliveryCharge: calculatedDelivery,
-      totalPrice:     calculatedTotal,
-      paymentMethod:  paymentMethod || "cod",
-      notes:          notes || "",
-      status:         "Pending",
+      subtotal:          calculatedSubtotal,
+      discountAmount:    validatedDiscountAmount,
+      appliedCouponCode: appliedCouponCode.trim(),
+      isFreeShipping:    validatedIsFreeShipping,
+      deliveryCharge:    calculatedDelivery,
+      totalPrice:        calculatedTotal,
+      paymentMethod:     paymentMethod || "cod",
+      notes:             notes || "",
+      status:            "Pending",
     });
+
+    // ── Increment Coupon Usage Counts ───────────────────
+    for (const disc of matchedDiscounts) {
+      try {
+        await Discount.findByIdAndUpdate(disc._id, { $inc: { usedCount: 1 } });
+      } catch (discErr) {
+        console.error("Failed to increment coupon usage:", disc._id, discErr);
+      }
+    }
 
     // ── Automatic Stock Management ──────────────────────
     for (const item of products) {

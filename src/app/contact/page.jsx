@@ -203,7 +203,7 @@ export default function ContactPage() {
   const waClean = waRaw.replace(/[^\d]/g, "");
   const waDefaultMsg = encodeURIComponent(
     siteSettings?.whatsapp?.defaultMessage ||
-      `Hello ${brandName}, I have an inquiry regarding plants`
+    `Hello ${brandName}, I have an inquiry regarding plants`
   );
   const waHref = waClean ? `https://wa.me/${waClean}?text=${waDefaultMsg}` : "#";
 
@@ -266,7 +266,7 @@ export default function ContactPage() {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">{brandName} Nursery &amp; Greenhouse</h3>
+                    <h3 className="font-bold text-slate-900">{brandName}</h3>
                     <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-0.5">
                       {storeAddress}
                     </p>
@@ -431,11 +431,10 @@ export default function ContactPage() {
                         setForm({ ...form, name: e.target.value });
                         if (errors.name) setErrors({ ...errors, name: null });
                       }}
-                      className={`w-full bg-white border text-sm text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${
-                        errors.name
+                      className={`w-full bg-white border text-sm text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${errors.name
                           ? "border-red-400 ring-2 ring-red-100"
                           : "border-gray-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      }`}
+                        }`}
                     />
                     {errors.name && (
                       <p className="text-[11px] text-red-500 font-medium mt-1">{errors.name}</p>
@@ -461,11 +460,10 @@ export default function ContactPage() {
                           setForm({ ...form, phone: val });
                           if (errors.phone) setErrors({ ...errors, phone: null });
                         }}
-                        className={`w-full bg-white border text-sm font-mono text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${
-                          errors.phone
+                        className={`w-full bg-white border text-sm font-mono text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${errors.phone
                             ? "border-red-400 ring-2 ring-red-100"
                             : "border-gray-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                        }`}
+                          }`}
                       />
                       {BD_PHONE_REGEX.test(form.phone) && (
                         <CheckCircle2 className="absolute right-3.5 top-3.5 text-emerald-600 w-4 h-4" />
@@ -493,11 +491,10 @@ export default function ContactPage() {
                         setForm({ ...form, email: e.target.value });
                         if (errors.email) setErrors({ ...errors, email: null });
                       }}
-                      className={`w-full bg-white border text-sm text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${
-                        errors.email
+                      className={`w-full bg-white border text-sm text-gray-800 rounded-xl px-4 py-3 focus:outline-none transition-all ${errors.email
                           ? "border-red-400 ring-2 ring-red-100"
                           : "border-gray-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      }`}
+                        }`}
                     />
                     {errors.email && (
                       <p className="text-[11px] text-red-500 font-medium mt-1">{errors.email}</p>
@@ -536,9 +533,8 @@ export default function ContactPage() {
                       Your Detailed Message <span className="text-red-500">*</span>
                     </label>
                     <span
-                      className={`text-[10px] font-mono ${
-                        form.message.length >= 15 ? "text-emerald-700 font-bold" : "text-slate-400"
-                      }`}
+                      className={`text-[10px] font-mono ${form.message.length >= 15 ? "text-emerald-700 font-bold" : "text-slate-400"
+                        }`}
                     >
                       {form.message.length} chars (min 15)
                     </span>
@@ -551,11 +547,10 @@ export default function ContactPage() {
                       setForm({ ...form, message: e.target.value });
                       if (errors.message) setErrors({ ...errors, message: null });
                     }}
-                    className={`w-full bg-white border text-sm text-gray-800 rounded-xl p-4 focus:outline-none transition-all ${
-                      errors.message
+                    className={`w-full bg-white border text-sm text-gray-800 rounded-xl p-4 focus:outline-none transition-all ${errors.message
                         ? "border-red-400 ring-2 ring-red-100"
                         : "border-gray-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    }`}
+                      }`}
                   />
                   {errors.message && (
                     <p className="text-[11px] text-red-500 font-medium mt-1">{errors.message}</p>

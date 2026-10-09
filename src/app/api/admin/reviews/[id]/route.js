@@ -72,6 +72,7 @@ export async function PATCH(request, { params }) {
           : 0;
 
       await Product.findByIdAndUpdate(review.productId, {
+        avgRating: avg,
         averageRating: avg,
         reviewCount: count,
       });
@@ -143,6 +144,7 @@ export async function DELETE(request, { params }) {
           : 0;
 
       await Product.findByIdAndUpdate(productId, {
+        avgRating: avg,
         averageRating: avg,
         reviewCount: count,
       });

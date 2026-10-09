@@ -1,5 +1,16 @@
 import mongoose, { Schema } from "mongoose";
 
+const VariantSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    originalPrice: { type: Number, default: 0, min: 0 },
+    stock: { type: Number, default: 10, min: 0 },
+    sku: { type: String, default: "" },
+  },
+  { _id: true }
+);
+
 const ProductSchema = new Schema(
   {
     title: {
@@ -10,6 +21,14 @@ const ProductSchema = new Schema(
     description: {
       type: String,
       required: [true, "Product description is required"],
+    },
+    shortDescription: {
+      type: String,
+      default: "",
+    },
+    fullDescriptionHtml: {
+      type: String,
+      default: "",
     },
     price: {
       type: Number,
@@ -27,6 +46,10 @@ const ProductSchema = new Schema(
       trim: true,
       lowercase: true,
     },
+    tags: {
+      type: [String], // e.g. ["Organic Feed", "Eco Certified", "Air Purifier"]
+      default: [],
+    },
     images: {
       type: [String], // Array of image URLs
       default: [],
@@ -40,6 +63,43 @@ const ProductSchema = new Schema(
     care_instructions: {
       type: String,
       default: "",
+    },
+    originalPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    hasVariants: {
+      type: Boolean,
+      default: false,
+    },
+    variantGroupTitle: {
+      type: String,
+      default: "Select Option",
+    },
+    variants: {
+      type: [VariantSchema],
+      default: [],
+    },
+    showCareGuideBadges: {
+      type: Boolean,
+      default: true,
+    },
+    careBadges: {
+      sunlight: { type: String, default: "Medium Indirect" },
+      water: { type: String, default: "Once a week" },
+      petSafe: { type: String, default: "Non-Toxic" },
+      difficulty: { type: String, default: "Beginner" },
+    },
+    customTabTitle: {
+      type: String,
+      default: "Botanical Background & Characteristics",
+    },
+    avgRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
     },
     averageRating: {
       type: Number,

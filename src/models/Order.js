@@ -89,6 +89,19 @@ const OrderSchema = new Schema(
       type: String,
       default: "",
     },
+    appliedCouponCode: {
+      type: String,
+      default: "",
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    isFreeShipping: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ["Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"],
@@ -99,6 +112,10 @@ const OrderSchema = new Schema(
     timestamps: true,
   }
 );
+
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Order;
+}
 
 const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
 

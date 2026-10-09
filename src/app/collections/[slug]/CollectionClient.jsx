@@ -179,29 +179,13 @@ export default function CollectionClient({ category, initialProducts, slug }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
-            {sortedProducts.map((product, idx) => {
-              const image =
-                product.images?.[0] ||
-                product.image ||
-                "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600&q=80";
-              const inStock = (product.stock_quantity ?? 1) > 0;
-              const isWished = mounted ? isInWishlist(product._id) : false;
-
-              return (
-                <ProductCard
-                  key={product._id}
-                  title={product.title}
-                  image={image}
-                  price={product.price}
-                  discount={DISCOUNTS[idx % DISCOUNTS.length]}
-                  inStock={inStock}
-                  wished={isWished}
-                  onToggleWishlist={() => toggleWishlist(product)}
-                  onOpen={() => router.push(`/products/${product._id}`)}
-                  onAdd={(e) => handleAddToCart(product, e)}
-                />
-              );
-            })}
+            {sortedProducts.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onOpen={() => router.push(`/products/${product._id}`)}
+              />
+            ))}
           </div>
         )}
       </div>

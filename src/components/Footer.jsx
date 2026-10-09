@@ -8,23 +8,12 @@ import {
   Phone,
   Mail,
   Clock,
-  ShieldCheck,
-  Truck,
-  RotateCcw,
-  CreditCard,
   ExternalLink,
 } from "lucide-react";
 import { FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon } from "@/components/SocialIcons";
 import { DEFAULT_SITE_SETTINGS } from "@/constants/defaultSiteSettings";
 import { DEFAULT_FOOTER_MENUS } from "@/constants/defaultNavigation";
 import BrandLogo from "@/components/BrandLogo";
-
-const SERVICE_BADGES = [
-  { icon: ShieldCheck, title: "Botanical Guarantee", desc: "100% healthy, nursery-grown plants" },
-  { icon: Truck, title: "Express Delivery", desc: "Fast shipping across all 64 districts" },
-  { icon: RotateCcw, title: "48-Hour Replacement", desc: "Instant transit claim protection" },
-  { icon: CreditCard, title: "Secure Checkout", desc: "Cash on delivery or digital payment" },
-];
 
 export default function Footer() {
   const pathname = usePathname();
@@ -107,23 +96,6 @@ export default function Footer() {
 
   return (
     <footer id="main-footer" className="site-footer bg-[#F7F8F4] text-[#5A6B5C] mt-auto">
-      {/* ─── Pre-footer guarantee strip ─────────────────────────────────── */}
-      <section id="trust-guarantee" className="section-trust-guarantee max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#EBF0E6] rounded-3xl p-3">
-          {SERVICE_BADGES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="flex items-center gap-3.5 bg-white rounded-2xl px-4 py-3.5">
-              <span className="w-11 h-11 rounded-full bg-[#EBF0E6] text-[#1E3F20] flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5" strokeWidth={1.8} />
-              </span>
-              <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[#1C2B1E] leading-tight">{title}</h4>
-                <p className="text-xs text-[#5A6B5C] mt-0.5">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ─── Main Dynamic Footer Grid ───────────────────────────────────────── */}
       <div className="border-t border-[#E3E8DD]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">

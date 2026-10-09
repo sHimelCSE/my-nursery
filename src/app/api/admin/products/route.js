@@ -55,15 +55,25 @@ export async function POST(request) {
     const {
       title,
       description,
+      shortDescription,
+      fullDescriptionHtml,
       price,
       costPrice,
+      originalPrice,
       category,
       images,
       stock_quantity,
       care_instructions,
+      hasVariants,
+      variantGroupTitle,
+      variants,
+      showCareGuideBadges,
+      careBadges,
+      customTabTitle,
+      tags,
     } = body;
 
-    if (!title || !description || price === undefined || !category) {
+    if (!title || (!description && !shortDescription) || price === undefined || !category) {
       return NextResponse.json(
         { success: false, message: "Title, description, price, and category are required." },
         { status: 400 }
@@ -79,15 +89,36 @@ export async function POST(request) {
       ? [images.trim()]
       : ["https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80"];
 
+    const tagList = Array.isArray(tags)
+      ? tags.map((t) => String(t).trim()).filter(Boolean)
+      : typeof tags === "string" && tags.trim()
+      ? tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [];
+
     const newProduct = await Product.create({
       title: title.trim(),
-      description: description.trim(),
+      description: (description || shortDescription || "").trim(),
+      shortDescription: (shortDescription || "").trim(),
+      fullDescriptionHtml: (fullDescriptionHtml || "").trim(),
       price: Number(price) || 0,
       costPrice: Number(costPrice) || 0,
+      originalPrice: Number(originalPrice) || 0,
       category: category.toLowerCase().trim(),
+      tags: tagList,
       images: imageList,
       stock_quantity: Number(stock_quantity) || 0,
       care_instructions: (care_instructions || "").trim(),
+      hasVariants: Boolean(hasVariants),
+      variantGroupTitle: (variantGroupTitle || "Select Option").trim(),
+      variants: Array.isArray(variants) ? variants : [],
+      showCareGuideBadges: showCareGuideBadges !== false,
+      careBadges: careBadges || {
+        sunlight: "Medium Indirect",
+        water: "Once a week",
+        petSafe: "Non-Toxic",
+        difficulty: "Beginner",
+      },
+      customTabTitle: (customTabTitle || "Botanical Background & Characteristics").trim(),
     });
 
     return NextResponse.json(
@@ -136,11 +167,31 @@ export async function PATCH(request) {
     // Sanitize numeric fields if provided
     if (updates.price !== undefined) updates.price = Number(updates.price);
     if (updates.costPrice !== undefined) updates.costPrice = Number(updates.costPrice);
+    if (updates.originalPrice !== undefined) updates.originalPrice = Number(updates.originalPrice);
     if (updates.stock_quantity !== undefined)
       updates.stock_quantity = Number(updates.stock_quantity);
 
     if (updates.images && typeof updates.images === "string") {
       updates.images = updates.images.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+
+    if (updates.tags !== undefined) {
+      updates.tags = Array.isArray(updates.tags)
+        ? updates.tags.map((t) => String(t).trim()).filter(Boolean)
+        : typeof updates.tags === "string" && updates.tags.trim()
+        ? updates.tags.split(",").map((t) => t.trim()).filter(Boolean)
+        : [];
+    }
+
+    if (Array.isArray(updates.variants)) {
+      updates.variants = updates.variants.map((v) => ({
+        ...v,
+        name: v.name?.trim() || "Option",
+        price: Number(v.price) || 0,
+        originalPrice: Number(v.originalPrice) || 0,
+        stock: Number(v.stock) || 0,
+        sku: v.sku?.trim() || "",
+      }));
     }
 
     const product = await Product.findByIdAndUpdate(productId, updates, {

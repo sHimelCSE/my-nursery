@@ -16,6 +16,11 @@ const SlideSchema = new Schema(
       default:
         "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=1400&q=85",
     },
+    featuredProductId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      default: null,
+    },
     floatingCard: {
       title: { type: String, default: "Peace Lily (Spathiphyllum)" },
       price: { type: String, default: "৳380" },
@@ -64,6 +69,12 @@ const HomepageConfigSchema = new Schema(
         type: String,
         default: DEFAULT_HOMEPAGE_CONFIG.categoriesSection.viewAllUrl,
       },
+      featuredCategoryIds: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Category",
+        },
+      ],
       perks: {
         type: [PerkSchema],
         default: DEFAULT_HOMEPAGE_CONFIG.categoriesSection.perks,
@@ -101,6 +112,10 @@ const HomepageConfigSchema = new Schema(
       discountPercentage: {
         type: Number,
         default: 15,
+      },
+      showCountdown: {
+        type: Boolean,
+        default: true,
       },
     },
     promoBanners: {
@@ -160,6 +175,29 @@ const HomepageConfigSchema = new Schema(
         type: String,
         default: DEFAULT_HOMEPAGE_CONFIG.newArrivals.title,
       },
+      showSpotlightBanner: {
+        type: Boolean,
+        default: true,
+      },
+      tabs: [
+        {
+          label: { type: String, required: true },
+          sourceType: {
+            type: String,
+            enum: ["preset", "category"],
+            default: "preset",
+          },
+          presetFilter: {
+            type: String,
+            default: "all",
+          },
+          categoryId: {
+            type: Schema.Types.ObjectId,
+            ref: "Category",
+            default: null,
+          },
+        },
+      ],
       spotlightBanner: {
         badge: {
           type: String,
@@ -193,6 +231,43 @@ const HomepageConfigSchema = new Schema(
     },
     topRankings: {
       isEnabled: { type: Boolean, default: true },
+      badge: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.topRankings.badge,
+      },
+      title: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.topRankings.title,
+      },
+      subtitle: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.topRankings.subtitle,
+      },
+      viewAllText: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.topRankings.viewAllText,
+      },
+      viewAllUrl: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.topRankings.viewAllUrl,
+      },
+      columns: [
+        {
+          title: { type: String, default: "Top Air Purifiers" },
+          browseUrl: { type: String, default: "/collections" },
+          items: [
+            {
+              productId: {
+                type: Schema.Types.ObjectId,
+                ref: "Product",
+                default: null,
+              },
+              badge: { type: String, default: "NASA Verified" },
+              rank: { type: Number, default: 1 },
+            },
+          ],
+        },
+      ],
     },
     newsletter: {
       isEnabled: { type: Boolean, default: true },
@@ -215,6 +290,10 @@ const HomepageConfigSchema = new Schema(
     },
     blogSection: {
       isEnabled: { type: Boolean, default: true },
+      badge: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.blogSection.badge,
+      },
       title: {
         type: String,
         default: DEFAULT_HOMEPAGE_CONFIG.blogSection.title,
@@ -223,9 +302,43 @@ const HomepageConfigSchema = new Schema(
         type: String,
         default: DEFAULT_HOMEPAGE_CONFIG.blogSection.subtitle,
       },
+      viewAllText: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.blogSection.viewAllText,
+      },
+      viewAllUrl: {
+        type: String,
+        default: DEFAULT_HOMEPAGE_CONFIG.blogSection.viewAllUrl,
+      },
+      sourceMode: {
+        type: String,
+        enum: ["latest", "selected"],
+        default: "latest",
+      },
+      selectedBlogIds: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Blog",
+        },
+      ],
+      displayCount: {
+        type: Number,
+        default: 3,
+      },
     },
     guaranteeStrip: {
       isEnabled: { type: Boolean, default: true },
+      items: [
+        {
+          icon: { type: String, default: "ShieldCheck" },
+          title: { type: String, default: "100% Healthy Plant Guarantee" },
+          description: {
+            type: String,
+            default:
+              "Acclimatized for resilience. 48-hour replacement warranty if any plant arrives stressed.",
+          },
+        },
+      ],
     },
   },
   {
