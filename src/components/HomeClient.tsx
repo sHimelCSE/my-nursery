@@ -163,7 +163,7 @@ export default function HomeClient({
           setHomepageConfig(data.config);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -597,11 +597,10 @@ export default function HomeClient({
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setActiveTabIndex(idx)}
-                    className={`px-5 py-2 rounded-full font-medium text-sm transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-[#1E3F20] text-white shadow-xs"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                    }`}
+                    className={`px-5 py-2 rounded-full font-medium text-sm transition-all cursor-pointer ${isActive
+                      ? "bg-[#1E3F20] text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -632,7 +631,7 @@ export default function HomeClient({
           {showSpotlightBanner ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               {/* Left Spotlight Banner */}
-              <div className="lg:col-span-4 relative overflow-hidden rounded-3xl min-h-[480px] lg:min-h-full bg-[#1E3F20] flex flex-col justify-between p-7 group shadow-sm">
+              <div className="lg:col-span-4 relative overflow-hidden rounded-3xl min-h-[480px] lg:min-h-full bg-[#1E3F20] flex flex-col justify-center p-7 group shadow-sm">
                 <SafeImage
                   src={homepageConfig?.newArrivals?.spotlightBanner?.imageUrl || "https://images.unsplash.com/photo-1545241047-6083a3684587?w=1000&q=85"}
                   fallback={PRODUCT_FALLBACK}
@@ -650,7 +649,7 @@ export default function HomeClient({
                       {homepageConfig?.newArrivals?.spotlightBanner?.badge || "FEATURED SPECIMEN"}
                     </span>
                     {homepageConfig?.newArrivals?.spotlightBanner?.price && (
-                      <span className="inline-block text-xs font-bold text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/25">
+                      <span className="inline-block text-xs font-bold !text-gray-500 !bg-white backdrop-blur-md px-3 py-1 rounded-full border border-white/25">
                         {homepageConfig.newArrivals.spotlightBanner.price}
                       </span>
                     )}
@@ -668,7 +667,7 @@ export default function HomeClient({
                 <div className="relative z-10 pt-6">
                   <Link
                     href={homepageConfig?.newArrivals?.spotlightBanner?.buttonUrl || "/collections"}
-                    className="inline-flex items-center gap-2 bg-white text-gray-900 hover:bg-emerald-50 px-6 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all"
+                    className="inline-flex items-center gap-2 !bg-white !text-gray-500 hover:bg-emerald-50 px-6 py-2.5 rounded-full text-sm font-semibold shadow-md transition-all"
                   >
                     {homepageConfig?.newArrivals?.spotlightBanner?.buttonText || "Buy Now"}
                     <ArrowRight className="w-4 h-4" />
@@ -975,18 +974,16 @@ export default function HomeClient({
                       type="button"
                       onClick={() => toggleWishlist(quickViewProduct)}
                       aria-label="Save to Wishlist"
-                      className={`w-11 h-11 rounded-full border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                        mounted && isInWishlist(quickViewProduct._id || quickViewProduct.id)
-                          ? "border-rose-200 bg-rose-50 text-rose-500 shadow-xs"
-                          : "border-gray-200 bg-white text-gray-700 hover:text-rose-500 hover:bg-gray-50"
-                      }`}
+                      className={`w-11 h-11 rounded-full border transition-all cursor-pointer flex items-center justify-center shrink-0 ${mounted && isInWishlist(quickViewProduct._id || quickViewProduct.id)
+                        ? "border-rose-200 bg-rose-50 text-rose-500 shadow-xs"
+                        : "border-gray-200 bg-white text-gray-700 hover:text-rose-500 hover:bg-gray-50"
+                        }`}
                     >
                       <Heart
-                        className={`w-5 h-5 transition-colors ${
-                          mounted && isInWishlist(quickViewProduct._id || quickViewProduct.id)
-                            ? "fill-rose-500 text-rose-500"
-                            : ""
-                        }`}
+                        className={`w-5 h-5 transition-colors ${mounted && isInWishlist(quickViewProduct._id || quickViewProduct.id)
+                          ? "fill-rose-500 text-rose-500"
+                          : ""
+                          }`}
                       />
                     </button>
                   </div>

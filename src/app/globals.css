@@ -76,4 +76,5 @@ a {
 
 :where([class*='css-dev-only-do-not-override']) a {
   color: inherit !important;
+  background-color: inherit !important;
 }

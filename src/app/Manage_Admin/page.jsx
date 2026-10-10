@@ -53,6 +53,7 @@ import ReviewsTab from "@/components/ReviewsTab";
 import BlogsManagerTab from "@/components/BlogsManagerTab";
 import SubscribersTab from "@/components/SubscribersTab";
 import DiscountsTab from "@/components/DiscountsTab";
+import AdminProfileTab from "@/components/AdminProfileTab";
 import RichTextEditor from "@/components/editor/RichTextEditor";
 import imageCompression from "browser-image-compression";
 import {
@@ -86,6 +87,7 @@ import {
   Heart,
   Award,
   CheckCircle2,
+  Settings,
 } from "lucide-react";
 
 // ── Chart Custom Tooltip ──────────────────────────────────────────────────
@@ -336,6 +338,19 @@ export default function AdminDashboardPage() {
     setMounted(true);
     checkAuth();
 
+    // Direct URL navigation support (e.g. ?tab=profile)
+    const checkUrlTab = () => {
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get("tab");
+        if (tabParam) {
+          setActiveTab(tabParam);
+        }
+      }
+    };
+    checkUrlTab();
+    window.addEventListener("popstate", checkUrlTab);
+
     const handleNavigateTab = (e) => {
       if (e?.detail) {
         setActiveTab(e.detail);
@@ -343,7 +358,10 @@ export default function AdminDashboardPage() {
       }
     };
     window.addEventListener("admin:navigate-tab", handleNavigateTab);
-    return () => window.removeEventListener("admin:navigate-tab", handleNavigateTab);
+    return () => {
+      window.removeEventListener("popstate", checkUrlTab);
+      window.removeEventListener("admin:navigate-tab", handleNavigateTab);
+    };
   }, []);
 
   // ─────────────────────────────────────────────
@@ -1448,7 +1466,7 @@ export default function AdminDashboardPage() {
           <div className="p-5 px-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-[#2D6A4F] flex items-center justify-center text-xl shadow-xs font-bold">
-                🌿
+                <Sprout className="w-5 h-5 text-[#2D6A4F]" />
               </div>
               <div>
                 <h1 className="font-bold text-sm text-emerald-900 tracking-tight">
@@ -1466,7 +1484,16 @@ export default function AdminDashboardPage() {
                 {admin.name?.charAt(0)?.toUpperCase() || "A"}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-800 truncate">{admin.name}</p>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-gray-800 truncate">{admin?.name || "Admin"}</h4>
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    title="Admin Profile & Security Settings"
+                    className="p-1 rounded-lg text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all ml-1 shrink-0 cursor-pointer"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500 truncate">{admin.email}</p>
                 <div className="mt-1 flex items-center gap-1.5">
                   {isSuperAdmin ? (
@@ -1639,6 +1666,7 @@ export default function AdminDashboardPage() {
               {activeTab === "customers" && (customerSubTab === "registered" ? "Customers & Registered User Directory" : "Newsletter Subscribers & Audience Management")}
               {activeTab === "notifications" && "Notifications Center"}
               {activeTab === "team" && "Administrator Team & Access Permissions"}
+              {activeTab === "profile" && "Admin Profile & Security (প্রোফাইল ও সিকিউরিটি)"}
             </h2>
             <p className="text-xs text-[#6B7280]">
               Store Administration System · Live Database Mode
@@ -2952,8 +2980,8 @@ export default function AdminDashboardPage() {
                 </div>
               ) : filteredNotifications.length === 0 ? (
                 <div className="bg-white rounded-2xl p-16 border border-gray-100 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl mx-auto mb-3">
-                    🌿
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3">
+                    <Sprout className="w-8 h-8 text-emerald-600" />
                   </div>
                   <h4 className="text-sm font-extrabold text-[#1A2E22]">
                     All caught up! No notifications
@@ -3470,6 +3498,18 @@ export default function AdminDashboardPage() {
           {activeTab === "discounts" && (
             <div className="p-8">
               <DiscountsTab />
+            </div>
+          )}
+
+          {/* Admin Profile & Security Tab */}
+          {activeTab === "profile" && (
+            <div className="p-8">
+              <AdminProfileTab
+                admin={admin}
+                onAdminUpdate={(updatedAdmin) => {
+                  setAdmin((prev) => ({ ...prev, ...updatedAdmin }));
+                }}
+              />
             </div>
           )}
 
