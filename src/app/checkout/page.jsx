@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
+  ShoppingBag,
 } from "lucide-react";
 import useCartStore from "@/lib/cartStore";
 import { lookupPostcode, getDistricts, getDivisions } from "@/lib/postcodeHelper";
@@ -342,7 +343,9 @@ export default function CheckoutPage() {
             <ArrowLeftOutlined /> Back to Shopping
           </Link>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] flex items-center justify-center text-xl">🛒</div>
+            <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] flex items-center justify-center text-white">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
             <div>
               <h1 className="text-2xl font-extrabold text-[#1A2E22]">Checkout</h1>
               <p className="text-[#6B7280] text-sm">{totalQty} item{totalQty !== 1 ? "s" : ""} · ৳{total.toLocaleString()} total</p>
@@ -452,8 +455,8 @@ export default function CheckoutPage() {
                         transition={{ duration: 0.2 }}
                         className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#D8F3DC] border border-[#74C69D] text-[#1B4332] text-[12px] font-semibold shadow-xs"
                       >
-                        <CheckCircleOutlined className="text-[#2D6A4F]" />
-                        <span>✓ Auto-detected: {autoDetected.upazila || autoDetected.postOffice}, {autoDetected.district}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#2D6A4F] shrink-0" />
+                        <span>Auto-detected: {autoDetected.upazila || autoDetected.postOffice}, {autoDetected.district}</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -520,8 +523,8 @@ export default function CheckoutPage() {
                 <motion.div
                   className="flex items-center justify-between bg-[#D8F3DC]/60 border border-[#B7E4C7] rounded-xl px-4 py-3"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🚚</span>
+                  <div className="flex items-center gap-2.5">
+                    <Truck className="w-5 h-5 text-[#2D6A4F] shrink-0" />
                     <div>
                       <p className="text-[13px] text-[#2D6A4F] font-semibold">
                         {form.district ? (
@@ -532,7 +535,7 @@ export default function CheckoutPage() {
                       </p>
                       {subtotal >= 1000 && (
                         <p className="text-[11px] text-[#40916C]">
-                          🎉 Free delivery applied (orders over ৳1,000)!
+                          Free delivery applied (orders over ৳1,000)!
                         </p>
                       )}
                     </div>
@@ -651,7 +654,7 @@ export default function CheckoutPage() {
 
                 {/* Promo Code Box in Checkout Order Summary */}
                 <div className="px-5 py-3 border-t border-gray-100 bg-[#FAFBF9] space-y-2">
-                  <form onSubmit={handleApplyCheckoutCoupon} className="flex gap-2">
+                  <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Tag className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
@@ -662,11 +665,19 @@ export default function CheckoutPage() {
                           setCheckoutPromoInput(e.target.value.toUpperCase());
                           setCheckoutPromoMsg({ type: "", text: "" });
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleApplyCheckoutCoupon(e);
+                          }
+                        }}
                         className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 uppercase font-mono tracking-wider"
                       />
                     </div>
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={handleApplyCheckoutCoupon}
                       disabled={applyingCheckoutPromo || !checkoutPromoInput.trim()}
                       className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1E3F20] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0 cursor-pointer"
                     >
@@ -676,7 +687,7 @@ export default function CheckoutPage() {
                         <span>Apply</span>
                       )}
                     </button>
-                  </form>
+                  </div>
 
                   {checkoutPromoMsg.text && (
                     <p

@@ -86,7 +86,7 @@ export default function AboutPage() {
   }, []);
 
   const brandName = siteSettings.general?.siteName || "MSH BloomCraft";
-  const storeAddress = siteSettings.general?.storeAddress || "Uttara, Dhaka, Bangladesh";
+  const storeAddress = siteSettings.general?.storeAddress || "";
 
   const { hero, philosophy, ecosystem, standards, ctaBanner } = pageConfig;
 
@@ -184,16 +184,7 @@ export default function AboutPage() {
                   className="prose prose-emerald max-w-none text-slate-600 leading-relaxed botanical-prose break-words"
                   dangerouslySetInnerHTML={{ __html: cleanPhilosophyHtml }}
                 />
-              ) : (
-                <div className="text-sm sm:text-base text-slate-600 leading-relaxed space-y-4 whitespace-pre-line">
-                  <p>
-                    Living in fast-paced urban environments like Dhaka, Chittagong, and Sylhet often means losing touch with nature. Concrete balconies and indoor workspaces leave us yearning for clean oxygen, fresh greenery, and calming aesthetics.
-                  </p>
-                  <p>
-                    At {brandName}, our team of passionate botanists and greenhouse growers cultivate plant varieties chosen specifically for Bangladesh’s humidity and climate.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
               <div className="pt-4 flex flex-wrap gap-4">
                 <Link

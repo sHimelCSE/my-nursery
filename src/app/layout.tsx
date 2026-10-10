@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import CartDrawer from "@/components/CartDrawer";
 import Footer from "@/components/Footer";
 import AntdProvider from "@/components/AntdProvider";
-import WhatsAppButton from "@/components/WhatsAppButton";
-import WishlistNotifier from "@/components/WishlistNotifier";
 import dbConnect from "@/lib/dbConnect";
+
+import ClientOverlays from "@/components/ClientOverlays";
 import SiteSetting, { DEFAULT_SITE_SETTINGS } from "@/models/SiteSetting";
 
 import {
@@ -99,6 +98,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
@@ -116,14 +119,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* AntdProvider enables App.useApp() (message/notification) globally */}
         <AntdProvider>
           <Navbar />
-          {/* CartDrawer: fixed slide-over panel, reads isCartOpen from Zustand */}
-          <CartDrawer />
+          <ClientOverlays />
           <main className="flex-1">{children}</main>
           <Footer />
-          {/* Wishlist popup toast notification */}
-          <WishlistNotifier />
-          {/* Floating WhatsApp Support Button */}
-          <WhatsAppButton />
         </AntdProvider>
       </body>
     </html>

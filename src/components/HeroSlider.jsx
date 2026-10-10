@@ -98,78 +98,76 @@ export const HERO_SLIDES = [
   },
 ];
 
-export default function HeroSlider({ section, data }) {
+export default function HeroSlider({ section = null, data = null }) {
   // Support dynamic slides from HomepageConfig data prop, with section or static fallback
   const dynamicSlides = data?.slides && data.slides.length > 0 ? data.slides : null;
   const cmsContent = section?.content || {};
 
   const slides = dynamicSlides
     ? dynamicSlides.map((s, idx) => {
-        const fallback = HERO_SLIDES[idx % HERO_SLIDES.length] || HERO_SLIDES[0];
-        const featProd =
-          typeof s.featuredProductId === "object" && s.featuredProductId
-            ? s.featuredProductId
-            : null;
+      const fallback = HERO_SLIDES[idx % HERO_SLIDES.length] || HERO_SLIDES[0];
+      const isFeaturedPopulated = s.featuredProductId && typeof s.featuredProductId === "object";
+      const featured = isFeaturedPopulated ? s.featuredProductId : null;
 
-        let floatingCard = null;
-        if (featProd) {
-          floatingCard = {
-            title: featProd.title || "Botanical Specimen",
-            price: `৳${featProd.price}`,
-            link: `/products/${featProd._id}`,
-            avgRating: Number(featProd.avgRating || featProd.averageRating || 0),
-            reviewCount: Number(featProd.reviewCount || 0),
-            tag: featProd.category
-              ? featProd.category.charAt(0).toUpperCase() + featProd.category.slice(1)
-              : (s.floatingCard?.tag || "Featured Specimen"),
-          };
-        } else if (s.floatingCard?.title) {
-          floatingCard = {
-            title: s.floatingCard.title,
-            price: s.floatingCard.price || "৳380",
-            link: s.floatingCard.link || "/products",
-            avgRating: 0,
-            reviewCount: 0,
-            tag: s.floatingCard.tag || fallback.floatingCard.tag,
-          };
-        } else {
-          floatingCard = fallback.floatingCard;
-        }
+      const productTitle =
+        featured?.title ||
+        s.floatingCard?.title ||
+        fallback.floatingCard?.title ||
+        "Botanical Specimen";
 
-        return {
-          id: s._id || `slide-${idx}`,
-          badge: s.badge || fallback.badge,
-          heading: s.title || s.heading || fallback.heading,
-          subtitle: s.subtitle || fallback.subtitle,
-          primaryBtnText: s.buttonText || s.primaryBtnText || fallback.primaryBtnText,
-          primaryBtnLink: s.buttonUrl || s.primaryBtnLink || fallback.primaryBtnLink,
-          secondaryBtnText: s.secondaryBtnText || fallback.secondaryBtnText,
-          secondaryBtnLink: s.secondaryBtnLink || fallback.secondaryBtnLink,
-          image: s.imageUrl || s.image || fallback.image,
-          imageAlt: s.title || fallback.imageAlt,
-          floatingCard,
-        };
-      })
+      const productPrice = featured?.price
+        ? (String(featured.price).startsWith("৳") ? featured.price : `৳${featured.price}`)
+        : (s.floatingCard?.price || fallback.floatingCard?.price || "৳380");
+
+      const productLink = featured?.slug
+        ? `/products/${featured.slug}`
+        : (s.floatingCard?.link || fallback.floatingCard?.link || "/collections");
+
+      const floatingCard = {
+        title: productTitle,
+        price: productPrice,
+        link: productLink,
+        avgRating: Number(featured?.avgRating || featured?.averageRating || 0),
+        reviewCount: Number(featured?.reviewCount || 0),
+        tag: featured?.category
+          ? featured.category.charAt(0).toUpperCase() + featured.category.slice(1)
+          : (s.floatingCard?.tag || fallback.floatingCard?.tag || "Featured Specimen"),
+      };
+
+      return {
+        id: s._id || `slide-${idx}`,
+        badge: s.badge || fallback.badge,
+        heading: s.title || s.heading || fallback.heading,
+        subtitle: s.subtitle || fallback.subtitle,
+        primaryBtnText: s.buttonText || s.primaryBtnText || fallback.primaryBtnText,
+        primaryBtnLink: s.buttonUrl || s.primaryBtnLink || fallback.primaryBtnLink,
+        secondaryBtnText: s.secondaryBtnText || fallback.secondaryBtnText,
+        secondaryBtnLink: s.secondaryBtnLink || fallback.secondaryBtnLink,
+        image: s.imageUrl || s.image || fallback.image,
+        imageAlt: s.title || fallback.imageAlt,
+        floatingCard,
+      };
+    })
     : [
-        {
-          ...HERO_SLIDES[0],
-          heading: cmsContent.heroTitle || HERO_SLIDES[0].heading,
-          subtitle: cmsContent.heroSubtitle || HERO_SLIDES[0].subtitle,
-          badge: cmsContent.heroTag ? `# ${cmsContent.heroTag.replace(/^#\s*/, "")}` : HERO_SLIDES[0].badge,
-          image: cmsContent.heroImage || HERO_SLIDES[0].image,
-          primaryBtnText: cmsContent.primaryBtnText || HERO_SLIDES[0].primaryBtnText,
-          primaryBtnLink: cmsContent.primaryBtnLink || HERO_SLIDES[0].primaryBtnLink,
-          secondaryBtnText: cmsContent.secondaryBtnText || HERO_SLIDES[0].secondaryBtnText,
-          secondaryBtnLink: cmsContent.secondaryBtnLink || HERO_SLIDES[0].secondaryBtnLink,
-          floatingCard: {
-            ...HERO_SLIDES[0].floatingCard,
-            title: cmsContent.cardPlantName || HERO_SLIDES[0].floatingCard.title,
-            price: cmsContent.cardPrice || HERO_SLIDES[0].floatingCard.price,
-          },
+      {
+        ...HERO_SLIDES[0],
+        heading: cmsContent.heroTitle || HERO_SLIDES[0].heading,
+        subtitle: cmsContent.heroSubtitle || HERO_SLIDES[0].subtitle,
+        badge: cmsContent.heroTag ? `# ${cmsContent.heroTag.replace(/^#\s*/, "")}` : HERO_SLIDES[0].badge,
+        image: cmsContent.heroImage || HERO_SLIDES[0].image,
+        primaryBtnText: cmsContent.primaryBtnText || HERO_SLIDES[0].primaryBtnText,
+        primaryBtnLink: cmsContent.primaryBtnLink || HERO_SLIDES[0].primaryBtnLink,
+        secondaryBtnText: cmsContent.secondaryBtnText || HERO_SLIDES[0].secondaryBtnText,
+        secondaryBtnLink: cmsContent.secondaryBtnLink || HERO_SLIDES[0].secondaryBtnLink,
+        floatingCard: {
+          ...HERO_SLIDES[0].floatingCard,
+          title: cmsContent.cardPlantName || HERO_SLIDES[0].floatingCard.title,
+          price: cmsContent.cardPrice || HERO_SLIDES[0].floatingCard.price,
         },
-        HERO_SLIDES[1],
-        HERO_SLIDES[2],
-      ];
+      },
+      HERO_SLIDES[1],
+      HERO_SLIDES[2],
+    ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
@@ -256,12 +254,12 @@ export default function HeroSlider({ section, data }) {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-18 z-10">
         <div className="relative min-h-[580px] lg:min-h-[520px] flex items-center">
-          <AnimatePresence mode="wait" custom={direction}>
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
             <motion.div
               key={currentSlide.id}
               custom={direction}
               variants={slideVariants}
-              initial="enter"
+              initial={false}
               animate="center"
               exit="exit"
               className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center"
@@ -374,11 +372,10 @@ export default function HeroSlider({ section, data }) {
                               return (
                                 <Star
                                   key={starVal}
-                                  className={`w-3.5 h-3.5 ${
-                                    isFilled
+                                  className={`w-3.5 h-3.5 ${isFilled
                                       ? "fill-amber-400 text-amber-400"
                                       : "text-gray-300"
-                                  }`}
+                                    }`}
                                 />
                               );
                             })}

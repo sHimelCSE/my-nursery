@@ -25,6 +25,23 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
       ? data.columns
       : [];
 
+  const validColumns = columns
+    .map((col) => {
+      const items = (Array.isArray(col.items) ? col.items : []).filter((item) => {
+        const product =
+          item.productId && typeof item.productId === "object"
+            ? item.productId
+            : null;
+        return Boolean(product?.title || item.title);
+      });
+      return { ...col, items };
+    })
+    .filter((col) => col.items.length > 0);
+
+  if (validColumns.length === 0) {
+    return null;
+  }
+
   const getRankBadgeStyle = (rank) => {
     if (rank === 1) {
       return "bg-amber-100 text-amber-800 border-amber-300 font-black";
@@ -62,10 +79,10 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {columns.map((col, cIdx) => {
+        {validColumns.map((col, cIdx) => {
           const colTitle = col.title || `Ranking Group #${cIdx + 1}`;
           const browseUrl = col.browseUrl || "/collections";
-          const items = Array.isArray(col.items) ? col.items : [];
+          const items = col.items;
 
           return (
             <div
@@ -79,7 +96,7 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
                     <span>{colTitle}</span>
                   </h3>
                   <span className="text-[11px] font-semibold text-gray-400 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-full">
-                    Top 3
+                    Top {items.length}
                   </span>
                 </div>
 
@@ -91,14 +108,18 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
                         ? item.productId
                         : null;
 
-                    const itemTitle =
-                      product?.title ||
-                      item.title ||
-                      `Featured Botanical #${rankNum}`;
+                    const itemTitle = product?.title || item.title || "";
+                    if (!itemTitle) return null;
+
                     const itemPrice =
                       product?.price !== undefined
                         ? `৳${product.price}`
-                        : item.price || "৳350";
+                        : item.price
+                        ? typeof item.price === "number"
+                          ? `৳${item.price}`
+                          : item.price
+                        : "";
+
                     const count = Number(product?.reviewCount ?? item.reviewCount ?? 0);
                     const avgRating = Number(
                       product?.avgRating ?? product?.averageRating ?? item.avgRating ?? 0
@@ -110,13 +131,11 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
                       item.image ||
                       FALLBACK_IMAGE;
 
-                    const itemUrl = product?._id
-                      ? `/products/${product._id}`
-                      : product?.id
-                      ? `/products/${product.id}`
-                      : "/products";
+                    const itemUrl = product?.slug
+                      ? `/products/${product.slug}`
+                      : item.url || "/products";
 
-                    const itemTag = item.badge || item.tag || "Top Choice";
+                    const itemTag = item.badge || item.tag || "";
 
                     return (
                       <Link
@@ -143,27 +162,31 @@ export default function TopRankingsSection({ data, onSelectCategory }) {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-[10px] font-bold text-[#2D5A27] bg-[#EBF0E6] px-1.5 py-0.5 rounded border border-[#2D6A4F]/10">
-                              {itemTag}
-                            </span>
-                            {count > 0 ? (
-                              <div className="flex items-center gap-0.5">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400 inline" />
-                                <span className="text-[10px] text-gray-700 font-bold">
-                                  {avgRating.toFixed(1)}
+                          {(itemTag || count > 0) && (
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              {itemTag && (
+                                <span className="text-[10px] font-bold text-[#2D6A4F] bg-[#EBF0E6] px-1.5 py-0.5 rounded border border-[#2D6A4F]/10">
+                                  {itemTag}
                                 </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-[11px]">Unrated</span>
-                            )}
-                          </div>
+                              )}
+                              {count > 0 && (
+                                <div className="flex items-center gap-0.5">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400 inline" />
+                                  <span className="text-[10px] text-gray-700 font-bold">
+                                    {avgRating.toFixed(1)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <h4 className="text-xs font-bold text-[#1A2E22] truncate group-hover:text-[#2D6A4F] transition-colors">
                             {itemTitle}
                           </h4>
-                          <p className="text-xs font-extrabold text-[#1E3F20] mt-0.5">
-                            {itemPrice}
-                          </p>
+                          {itemPrice && (
+                            <p className="text-xs font-extrabold text-[#1E3F20] mt-0.5">
+                              {itemPrice}
+                            </p>
+                          )}
                         </div>
 
                         <div className="text-gray-300 group-hover:text-[#2D6A4F] group-hover:translate-x-0.5 transition-all pr-1">

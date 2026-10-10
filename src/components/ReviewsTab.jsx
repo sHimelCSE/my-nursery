@@ -458,7 +458,7 @@ export default function ReviewsTab({ onReviewsCountChange }) {
                             </div>
                             <div className="min-w-0 max-w-[180px]">
                               <Link
-                                href={`/products/${product._id}`}
+                                href={`/products/${product.slug}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="font-bold text-gray-900 hover:text-[#2D6A4F] transition-colors truncate block group"

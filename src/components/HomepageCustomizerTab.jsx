@@ -869,7 +869,7 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                                 );
                                 updateNestedField(
                                   `heroSlider.slides.${sIdx}.floatingCard.link`,
-                                  `/products/${chosen._id}`
+                                  chosen.slug ? `/products/${chosen.slug}` : "/products"
                                 );
                               } else {
                                 updateNestedField(
@@ -960,7 +960,7 @@ export default function HomepageCustomizerTab({ onNavigateTab }) {
                                   )}
                                   <span className="text-[10px] text-gray-400">•</span>
                                   <span className="text-[11px] text-[#2D6A4F] font-medium truncate">
-                                    /products/{boundProd._id}
+                                    /products/{boundProd.slug || "product"}
                                   </span>
                                 </div>
                               </div>

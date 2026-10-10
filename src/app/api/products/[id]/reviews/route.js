@@ -11,16 +11,21 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid product ID" },
-        { status: 400 }
-      );
+    await dbConnect();
+    let productObjectId = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      productObjectId = new mongoose.Types.ObjectId(id);
+    } else {
+      const prod = await Product.findOne({ slug: id.toString().toLowerCase() }).select("_id").lean();
+      if (prod) productObjectId = prod._id;
     }
 
-    await dbConnect();
-
-    const productObjectId = new mongoose.Types.ObjectId(id);
+    if (!productObjectId) {
+      return NextResponse.json(
+        { success: false, error: "Product not found" },
+        { status: 404 }
+      );
+    }
 
     // Fetch reviews (excluding hidden reviews) sorted newest first
     const reviews = await Review.find({
@@ -61,9 +66,9 @@ export async function POST(request, { params }) {
   try {
     const { id } = await params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, error: "Invalid product ID" },
+        { success: false, error: "Missing product identifier" },
         { status: 400 }
       );
     }
@@ -91,8 +96,12 @@ export async function POST(request, { params }) {
 
     await dbConnect();
 
-    const productObjectId = new mongoose.Types.ObjectId(id);
-    const product = await Product.findById(productObjectId);
+    let product = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      product = await Product.findById(id);
+    } else {
+      product = await Product.findOne({ slug: id.toString().toLowerCase() });
+    }
 
     if (!product) {
       return NextResponse.json(
@@ -100,6 +109,8 @@ export async function POST(request, { params }) {
         { status: 404 }
       );
     }
+
+    const productObjectId = product._id;
 
     // Check if session exists for verified badge
     const session = await getServerSession(authOptions);

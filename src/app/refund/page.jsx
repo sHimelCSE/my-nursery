@@ -127,13 +127,13 @@ export default function RefundPolicyPage() {
   const guaranteeTitle = refund.guaranteeTitle || "48-Hour Live Plant Replacement Guarantee";
   const guaranteeText = refund.guaranteeText || "We take immense pride in our protective packaging. If your plant arrives broken, dead, or severely damaged during courier handling, we will send you a brand new plant completely free or provide a full refund.";
   const steps = Array.isArray(refund.steps) && refund.steps.length > 0 ? refund.steps : DEFAULT_PAGE_THEME_CONFIG.policyPages.refund.steps;
-  const hotlinePhone = general.hotlinePhone || "+880 1712-345678";
+  const hotlinePhone = general.hotlinePhone || "";
 
   const waRaw = whatsapp.whatsappNumber || general.hotlinePhone || "";
   const waClean = waRaw.replace(/[^\d]/g, "");
   const waHref = waClean
     ? `https://wa.me/${waClean}?text=${encodeURIComponent(`Hello ${brandName}, I need assistance with a damaged plant claim.`)}`
-    : "#";
+    : "";
 
   const cleanHtml = (refund.contentHtml || "")
     .replace(/&nbsp;/g, " ")
@@ -144,10 +144,12 @@ export default function RefundPolicyPage() {
       <div className="max-w-4xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
-            <span>{badgeText}</span>
-          </div>
+          {badgeText && (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>{badgeText}</span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-bold font-serif text-slate-900 tracking-tight">
             {pageTitle}
           </h1>
@@ -176,18 +178,14 @@ export default function RefundPolicyPage() {
         {/* Content Box */}
         <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
           {/* Dynamic Policy Paragraphs */}
-          <section className="leading-relaxed">
-            {cleanHtml ? (
+          {cleanHtml ? (
+            <section className="leading-relaxed">
               <div
                 className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose break-words"
                 dangerouslySetInnerHTML={{ __html: cleanHtml }}
               />
-            ) : (
-              <div className="space-y-4 whitespace-pre-line leading-relaxed break-words text-slate-500 italic">
-                Refund policy terms are currently being updated.
-              </div>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           {/* Quick Action Claims Guide */}
           <div className="pt-4 border-t border-gray-100 space-y-4">
@@ -203,24 +201,30 @@ export default function RefundPolicyPage() {
               ))}
             </div>
 
-            <div className="pt-2 flex flex-wrap gap-3">
-              <a
-                href={waHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Submit Claim on WhatsApp</span>
-              </a>
-              <a
-                href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
-                className="px-6 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-300 text-slate-700 text-xs font-bold inline-flex items-center gap-2 transition-colors"
-              >
-                <Phone className="w-4 h-4 text-[#2D6A4F]" />
-                <span>Call Hotline Support</span>
-              </a>
-            </div>
+            {(waHref || hotlinePhone) && (
+              <div className="pt-2 flex flex-wrap gap-3">
+                {waHref && (
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-6 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Submit Claim on WhatsApp</span>
+                  </a>
+                )}
+                {hotlinePhone && (
+                  <a
+                    href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
+                    className="px-6 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-300 text-slate-700 text-xs font-bold inline-flex items-center gap-2 transition-colors"
+                  >
+                    <Phone className="w-4 h-4 text-[#2D6A4F]" />
+                    <span>Call Hotline Support</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

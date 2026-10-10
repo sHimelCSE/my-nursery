@@ -192,11 +192,10 @@ export default function ContactPage() {
     pageConfig?.subtitle ||
     "Have a question about a plant species, need sick plant care diagnosis, or have an order inquiry? Reach out to our dedicated botanists and support specialists.";
 
-  const storeAddress =
-    siteSettings?.general?.storeAddress || "Sector 7, Uttara, Dhaka-1230, Bangladesh";
-  const hotlinePhone = siteSettings?.general?.hotlinePhone || "+880 1712-345678";
-  const contactEmail = siteSettings?.general?.contactEmail || "support@bloomcraftnursery.com";
-  const businessHours = siteSettings?.general?.businessHours || "Monday – Sunday: 9:00 AM – 9:00 PM";
+  const storeAddress = siteSettings?.general?.storeAddress || "";
+  const hotlinePhone = siteSettings?.general?.hotlinePhone || "";
+  const contactEmail = siteSettings?.general?.contactEmail || "";
+  const businessHours = siteSettings?.general?.businessHours || "";
 
   const waRaw =
     siteSettings?.whatsapp?.whatsappNumber || siteSettings?.general?.hotlinePhone || "";
@@ -205,7 +204,7 @@ export default function ContactPage() {
     siteSettings?.whatsapp?.defaultMessage ||
     `Hello ${brandName}, I have an inquiry regarding plants`
   );
-  const waHref = waClean ? `https://wa.me/${waClean}?text=${waDefaultMsg}` : "#";
+  const waHref = waClean ? `https://wa.me/${waClean}?text=${waDefaultMsg}` : "";
 
   const doctorCard = pageConfig?.doctorCard;
 
@@ -214,15 +213,17 @@ export default function ContactPage() {
       <div className="max-w-7xl mx-auto">
         {/* ─── Breadcrumb & Header ────────────────────────────────────── */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50 mb-4"
-          >
-            <Sprout className="w-3.5 h-3.5 text-emerald-700" />
-            <span>{contactPageBadge}</span>
-          </motion.div>
+          {contactPageBadge && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50 mb-4"
+            >
+              <Sprout className="w-3.5 h-3.5 text-emerald-700" />
+              <span>{contactPageBadge}</span>
+            </motion.div>
+          )}
           <motion.h1
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -231,14 +232,16 @@ export default function ContactPage() {
           >
             {contactPageTitle}
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed"
-          >
-            {contactPageSubtitle}
-          </motion.p>
+          {contactPageSubtitle && (
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed"
+            >
+              {contactPageSubtitle}
+            </motion.p>
+          )}
         </div>
 
         {/* ─── Main 2-Column Grid ────────────────────────────────────────── */}
@@ -253,93 +256,97 @@ export default function ContactPage() {
             className="lg:col-span-5 space-y-6"
           >
             {/* Primary Details Card */}
-            <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-6">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-                <Headphones className="w-5 h-5 text-[#2D6A4F]" />
-                <span>Customer Support Hub</span>
-              </h2>
+            {(storeAddress || hotlinePhone || contactEmail || businessHours || waHref) && (
+              <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-6">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+                  <Headphones className="w-5 h-5 text-[#2D6A4F]" />
+                  <span>Customer Support Hub</span>
+                </h2>
 
-              <div className="space-y-5 text-sm">
-                {/* Address */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{brandName}</h3>
-                    <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-0.5">
-                      {storeAddress}
-                    </p>
-                    <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/50">
-                      Central Display &amp; Plant Care Center
-                    </span>
-                  </div>
+                <div className="space-y-5 text-sm">
+                  {/* Address */}
+                  {storeAddress && (
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div>
+                        {brandName && <h3 className="font-bold text-slate-900">{brandName}</h3>}
+                        <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-0.5">
+                          {storeAddress}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hotline */}
+                  {hotlinePhone && (
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Direct Support Hotline</h3>
+                        <a
+                          href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
+                          className="text-[#2D6A4F] hover:text-[#1B4332] font-bold text-sm block mt-0.5 transition-colors"
+                        >
+                          {hotlinePhone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Email */}
+                  {contactEmail && (
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Official Email Inquiries</h3>
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="text-[#2D6A4F] hover:underline font-semibold text-xs sm:text-sm block mt-0.5"
+                        >
+                          {contactEmail}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Opening Hours */}
+                  {businessHours && (
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Nursery &amp; Service Hours</h3>
+                        <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
+                          {businessHours}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Hotline */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">Direct Support Hotline</h3>
+                {/* Direct WhatsApp Callout */}
+                {waHref && (
+                  <div className="pt-4 border-t border-emerald-100/60">
                     <a
-                      href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
-                      className="text-[#2D6A4F] hover:text-[#1B4332] font-bold text-sm block mt-0.5 transition-colors"
+                      href={waHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-xs hover:shadow-md transition-all duration-200"
                     >
-                      {hotlinePhone}
-                    </a>
-                    <p className="text-xs text-slate-500">Toll-free customer guidance &amp; voice support</p>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">Official Email Inquiries</h3>
-                    <a
-                      href={`mailto:${contactEmail}`}
-                      className="text-[#2D6A4F] hover:underline font-semibold text-xs sm:text-sm block mt-0.5"
-                    >
-                      {contactEmail}
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Chat on WhatsApp</span>
                     </a>
                   </div>
-                </div>
-
-                {/* Opening Hours */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2D6A4F] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">Nursery &amp; Service Hours</h3>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-0.5">
-                      {businessHours}
-                    </p>
-                    <p className="text-xs text-slate-500">Open 7 days a week including public holidays</p>
-                  </div>
-                </div>
+                )}
               </div>
-
-              {/* Direct WhatsApp Callout */}
-              <div className="pt-4 border-t border-emerald-100/60">
-                <a
-                  href={waHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-xs hover:shadow-md transition-all duration-200"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Chat on WhatsApp (Instant Reply)</span>
-                </a>
-                <p className="text-center text-[11px] text-slate-400 mt-2">
-                  Average response time: &lt; 15 minutes
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* Plant Doctor Consultation Card */}
             {doctorCard?.isEnabled !== false && (

@@ -123,8 +123,8 @@ export default function PrivacyPolicyPage() {
   const badgeText = privacy.badge || "Customer Data Protection Guarantee";
   const pageTitle = privacy.title || "Privacy & Customer Data Protection Policy";
   const lastUpdated = privacy.lastUpdated || "Recently Updated";
-  const contactEmail = general.contactEmail || "support@bloomcraftnursery.com";
-  const hotlinePhone = general.hotlinePhone || "+880 1712-345678";
+  const contactEmail = general.contactEmail || "";
+  const hotlinePhone = general.hotlinePhone || "";
 
   const cleanHtml = (privacy.contentHtml || "")
     .replace(/&nbsp;/g, " ")
@@ -135,10 +135,12 @@ export default function PrivacyPolicyPage() {
       <div className="max-w-4xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
-            <span>{badgeText}</span>
-          </div>
+          {badgeText && (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>{badgeText}</span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-bold font-serif text-slate-900 tracking-tight">
             {pageTitle}
           </h1>
@@ -150,18 +152,14 @@ export default function PrivacyPolicyPage() {
         {/* Content Box */}
         <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
           {/* Dynamic Policy Content */}
-          <section className="leading-relaxed">
-            {cleanHtml ? (
+          {cleanHtml ? (
+            <section className="leading-relaxed">
               <div
                 className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose break-words"
                 dangerouslySetInnerHTML={{ __html: cleanHtml }}
               />
-            ) : (
-              <div className="space-y-4 whitespace-pre-line leading-relaxed break-words text-slate-500 italic">
-                Policy details are currently being updated.
-              </div>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           {/* Pillars Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
@@ -207,31 +205,42 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Contact Box */}
-          <section className="pt-4 border-t border-emerald-100/60">
-            <div className="bg-emerald-50/60 border border-emerald-200/50 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
-              <Mail className="w-5 h-5 text-[#2D6A4F] mt-0.5 shrink-0" />
-              <div>
-                <h3 className="font-bold text-sm text-slate-900">Privacy Questions or Requests?</h3>
-                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-                  Email our Data Compliance team at{" "}
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    className="font-bold text-[#2D6A4F] hover:underline"
-                  >
-                    {contactEmail}
-                  </a>{" "}
-                  or call our hotline at{" "}
-                  <a
-                    href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
-                    className="font-bold text-[#2D6A4F] hover:underline"
-                  >
-                    {hotlinePhone}
-                  </a>
-                  .
-                </p>
+          {(contactEmail || hotlinePhone) && (
+            <section className="pt-4 border-t border-emerald-100/60">
+              <div className="bg-emerald-50/60 border border-emerald-200/50 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
+                <Mail className="w-5 h-5 text-[#2D6A4F] mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Privacy Questions or Requests?</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                    {contactEmail && (
+                      <>
+                        Email our Data Compliance team at{" "}
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="font-bold text-[#2D6A4F] hover:underline"
+                        >
+                          {contactEmail}
+                        </a>
+                      </>
+                    )}
+                    {contactEmail && hotlinePhone && " or "}
+                    {hotlinePhone && (
+                      <>
+                        call our hotline at{" "}
+                        <a
+                          href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
+                          className="font-bold text-[#2D6A4F] hover:underline"
+                        >
+                          {hotlinePhone}
+                        </a>
+                      </>
+                    )}
+                    .
+                  </p>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       </div>
     </div>

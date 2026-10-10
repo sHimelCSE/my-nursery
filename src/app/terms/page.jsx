@@ -118,8 +118,8 @@ export default function TermsAndConditionsPage() {
   const effectiveDate = terms.lastUpdated || "Recently Updated";
   const dhakaTimeline = terms.dhakaTimeline || "24 to 48 Hours";
   const outsideTimeline = terms.outsideTimeline || "48 to 72 Hours";
-  const contactEmail = general.contactEmail || "support@bloomcraftnursery.com";
-  const hotlinePhone = general.hotlinePhone || "+880 1712-345678";
+  const contactEmail = general.contactEmail || "";
+  const hotlinePhone = general.hotlinePhone || "";
 
   const cleanHtml = (terms.contentHtml || "")
     .replace(/&nbsp;/g, " ")
@@ -130,10 +130,12 @@ export default function TermsAndConditionsPage() {
       <div className="max-w-4xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
-            <FileText className="w-3.5 h-3.5 text-[#2D6A4F]" />
-            <span>{badgeText}</span>
-          </div>
+          {badgeText && (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/50">
+              <FileText className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <span>{badgeText}</span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-bold font-serif text-slate-900 tracking-tight">
             {pageTitle}
           </h1>
@@ -145,18 +147,14 @@ export default function TermsAndConditionsPage() {
         {/* Content Box */}
         <div className="bg-white rounded-3xl border border-emerald-100/60 shadow-xs p-8 sm:p-10 space-y-8 text-sm sm:text-base leading-relaxed text-slate-600">
           {/* Dynamic Policy Paragraphs */}
-          <section className="leading-relaxed">
-            {cleanHtml ? (
+          {cleanHtml ? (
+            <section className="leading-relaxed">
               <div
                 className="prose prose-emerald max-w-none text-slate-700 leading-relaxed botanical-prose break-words"
                 dangerouslySetInnerHTML={{ __html: cleanHtml }}
               />
-            ) : (
-              <div className="space-y-4 whitespace-pre-line leading-relaxed break-words text-slate-500 italic">
-                Terms and conditions are currently being updated.
-              </div>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           {/* Delivery Timelines Card */}
           <div className="pt-4 border-t border-gray-100 space-y-3">
@@ -183,25 +181,31 @@ export default function TermsAndConditionsPage() {
           </div>
 
           {/* Support Strip */}
-          <div className="pt-4 border-t border-emerald-100/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-500">
-            <span>Questions regarding our terms or bulk orders?</span>
-            <div className="flex items-center gap-4">
-              <a
-                href={`mailto:${contactEmail}`}
-                className="font-bold text-[#2D6A4F] hover:underline flex items-center gap-1.5"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                <span>{contactEmail}</span>
-              </a>
-              <a
-                href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
-                className="font-bold text-[#2D6A4F] hover:underline flex items-center gap-1.5"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>{hotlinePhone}</span>
-              </a>
+          {(contactEmail || hotlinePhone) && (
+            <div className="pt-4 border-t border-emerald-100/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-500">
+              <span>Questions regarding our terms or bulk orders?</span>
+              <div className="flex items-center gap-4">
+                {contactEmail && (
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="font-bold text-[#2D6A4F] hover:underline flex items-center gap-1.5"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>{contactEmail}</span>
+                  </a>
+                )}
+                {hotlinePhone && (
+                  <a
+                    href={`tel:${hotlinePhone.replace(/[^\d+]/g, "")}`}
+                    className="font-bold text-[#2D6A4F] hover:underline flex items-center gap-1.5"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{hotlinePhone}</span>
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -129,7 +129,7 @@ export function getProductSchema(product) {
     },
     offers: {
       "@type": "Offer",
-      url: `${BASE_URL}/products/${id}`,
+      url: `${BASE_URL}/products/${product.slug || ""}`,
       priceCurrency: "BDT",
       price: product.price,
       priceValidUntil: "2027-12-31",

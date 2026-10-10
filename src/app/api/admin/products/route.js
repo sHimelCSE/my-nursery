@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getAuthenticatedAdmin } from "@/lib/adminAuth";
 import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
+import Category from "@/models/Category";
 
 // ─────────────────────────────────────────────
 // GET /api/admin/products
@@ -61,6 +63,7 @@ export async function POST(request) {
       costPrice,
       originalPrice,
       category,
+      categories,
       images,
       stock_quantity,
       care_instructions,
@@ -69,11 +72,13 @@ export async function POST(request) {
       variants,
       showCareGuideBadges,
       careBadges,
+      hasCareGuide,
+      careGuide,
       customTabTitle,
       tags,
     } = body;
 
-    if (!title || (!description && !shortDescription) || price === undefined || !category) {
+    if (!title || (!description && !shortDescription) || price === undefined || (!category && (!categories || categories.length === 0))) {
       return NextResponse.json(
         { success: false, message: "Title, description, price, and category are required." },
         { status: 400 }
@@ -95,6 +100,18 @@ export async function POST(request) {
       ? tags.split(",").map((t) => t.trim()).filter(Boolean)
       : [];
 
+    // Sanitize categories array
+    let cleanCategories = Array.isArray(categories)
+      ? categories.map((c) => String(c?._id || c).trim()).filter(Boolean)
+      : [];
+
+    let primaryCategory = category ? category.toLowerCase().trim() : "";
+    if (!primaryCategory && cleanCategories.length > 0) {
+      const firstCatDoc = await Category.findById(cleanCategories[0]).select("slug name").lean();
+      primaryCategory = firstCatDoc?.slug || firstCatDoc?.name?.toLowerCase().replace(/\s+/g, "-") || "plant";
+    }
+    if (!primaryCategory) primaryCategory = "plant";
+
     const newProduct = await Product.create({
       title: title.trim(),
       description: (description || shortDescription || "").trim(),
@@ -103,7 +120,8 @@ export async function POST(request) {
       price: Number(price) || 0,
       costPrice: Number(costPrice) || 0,
       originalPrice: Number(originalPrice) || 0,
-      category: category.toLowerCase().trim(),
+      categories: cleanCategories,
+      category: primaryCategory,
       tags: tagList,
       images: imageList,
       stock_quantity: Number(stock_quantity) || 0,
@@ -118,8 +136,19 @@ export async function POST(request) {
         petSafe: "Non-Toxic",
         difficulty: "Beginner",
       },
+      hasCareGuide: hasCareGuide !== false,
+      careGuide: careGuide || {
+        lightLocation: "",
+        hydrationWatering: "",
+        safetyDifficulty: "",
+        horticulturistNote: "",
+      },
       customTabTitle: (customTabTitle || "Botanical Background & Characteristics").trim(),
     });
+
+    try {
+      revalidateTag("products");
+    } catch {}
 
     return NextResponse.json(
       {
@@ -194,6 +223,23 @@ export async function PATCH(request) {
       }));
     }
 
+    if (updates.categories !== undefined) {
+      updates.categories = Array.isArray(updates.categories)
+        ? updates.categories.map((c) => String(c?._id || c).trim()).filter(Boolean)
+        : [];
+      if (!updates.category && updates.categories.length > 0) {
+        const firstCatDoc = await Category.findById(updates.categories[0]).select("slug name").lean();
+        if (firstCatDoc) {
+          updates.category = firstCatDoc.slug || firstCatDoc.name?.toLowerCase().replace(/\s+/g, "-");
+        }
+      }
+    }
+
+    if (updates.title) {
+      const { getUniqueSlug } = await import("@/models/Product");
+      updates.slug = await getUniqueSlug(Product, updates.title, productId);
+    }
+
     const product = await Product.findByIdAndUpdate(productId, updates, {
       new: true,
       runValidators: true,
@@ -205,6 +251,10 @@ export async function PATCH(request) {
         { status: 404 }
       );
     }
+
+    try {
+      revalidateTag("products");
+    } catch {}
 
     return NextResponse.json(
       {
@@ -256,6 +306,10 @@ export async function DELETE(request) {
         { status: 404 }
       );
     }
+
+    try {
+      revalidateTag("products");
+    } catch {}
 
     return NextResponse.json(
       {

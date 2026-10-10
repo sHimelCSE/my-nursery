@@ -27,9 +27,13 @@ export default function GuaranteeStripSection({ data }) {
   }
 
   const items =
-    Array.isArray(data?.items) && data.items.length > 0
-      ? data.items
-      : DEFAULT_HOMEPAGE_CONFIG.guaranteeStrip.items;
+    Array.isArray(data?.items)
+      ? data.items.filter((item) => item && (item.title || item.description))
+      : [];
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <section
@@ -40,7 +44,7 @@ export default function GuaranteeStripSection({ data }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {items.map((item, idx) => {
             const IconComp = ICON_MAP[item.icon] || ShieldCheck;
-            const title = item.title || `Guarantee Pillar #${idx + 1}`;
+            const title = item.title || "";
             const desc = item.description || "";
 
             return (
@@ -52,12 +56,16 @@ export default function GuaranteeStripSection({ data }) {
                   <IconComp className="w-5 h-5 stroke-[2]" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-extrabold text-xs sm:text-sm text-[#1A2E22]">
-                    {title}
-                  </h4>
-                  <p className="text-xs text-[#5A6B5C] leading-relaxed">
-                    {desc}
-                  </p>
+                  {title && (
+                    <h4 className="font-extrabold text-xs sm:text-sm text-[#1A2E22]">
+                      {title}
+                    </h4>
+                  )}
+                  {desc && (
+                    <p className="text-xs text-[#5A6B5C] leading-relaxed">
+                      {desc}
+                    </p>
+                  )}
                 </div>
               </div>
             );

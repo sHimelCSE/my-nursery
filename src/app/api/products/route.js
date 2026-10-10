@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Product from "@/models/Product";
+import Category from "@/models/Category";
 import Review from "@/models/Review";
 
 export const dynamic = "force-dynamic";
@@ -14,23 +15,68 @@ export async function GET(request) {
   try {
     await dbConnect();
 
+    // Auto-migration check: ensure any product missing a slug gets a clean unique slug
+    try {
+      const missingSlugs = await Product.find({
+        $or: [{ slug: { $exists: false } }, { slug: null }, { slug: "" }],
+      })
+        .select("_id title")
+        .lean();
+
+      if (missingSlugs.length > 0) {
+        for (const p of missingSlugs) {
+          const s =
+            (p.title || "")
+              .toLowerCase()
+              .trim()
+              .replace(/[\(\)]/g, "")
+              .replace(/[^\w\s-]/g, "")
+              .replace(/[\s_-]+/g, "-")
+              .replace(/^-+|-+$/g, "") || `product-${p._id}`;
+          await Product.updateOne({ _id: p._id }, { $set: { slug: s } });
+        }
+      }
+    } catch {}
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const category = searchParams.get("category") || "";
 
-    // Build dynamic filter object
-    const filter = {};
+    const andClauses = [];
 
     if (category && category.toLowerCase() !== "all") {
-      filter.category = { $regex: new RegExp(`^${category.trim()}$`, "i") };
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(category.trim());
+      const orConditions = [
+        { category: { $regex: new RegExp(`^${category.trim()}$`, "i") } },
+        { category: category.trim() },
+      ];
+      if (isObjectId) {
+        orConditions.push({ categories: category.trim() });
+        orConditions.push({ categoryId: category.trim() });
+      } else {
+        const catDoc = await Category.findOne({
+          $or: [
+            { slug: category.trim().toLowerCase() },
+            { name: { $regex: new RegExp(`^${category.trim()}$`, "i") } },
+          ],
+        }).select("_id").lean();
+        if (catDoc) {
+          orConditions.push({ categories: catDoc._id });
+        }
+      }
+      andClauses.push({ $or: orConditions });
     }
 
     if (search.trim()) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ];
+      andClauses.push({
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+        ],
+      });
     }
+
+    const filter = andClauses.length > 0 ? { $and: andClauses } : {};
 
     const products = await Product.find(filter).sort({ createdAt: -1 });
 

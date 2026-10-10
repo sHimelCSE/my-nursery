@@ -189,6 +189,7 @@ export default function WishlistPage() {
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {items.map((item) => {
               const id = item._id || item.id;
+              const productHref = item.slug ? `/products/${item.slug}` : "#";
               const img =
                 item.images?.[0] || item.image || FALLBACK_IMG;
               const inStock = (item.stock_quantity ?? 1) > 0;
@@ -202,7 +203,7 @@ export default function WishlistPage() {
                   <div>
                     {/* Image Container with Badges & Remove Button */}
                     <div className="relative aspect-square rounded-xl overflow-hidden bg-[#F2F5ED] mb-3">
-                      <Link href={`/products/${id}`} className="block w-full h-full">
+                      <Link href={productHref} className="block w-full h-full">
                         <SafeImage
                           src={img}
                           fallback={FALLBACK_IMG}
@@ -243,7 +244,7 @@ export default function WishlistPage() {
                     {/* Title & Price Details */}
                     <div className="px-1 pb-2">
                       <Link
-                        href={`/products/${id}`}
+                        href={productHref}
                         className="text-sm font-semibold text-[#1C2B1E] group-hover:text-[#1E3F20] line-clamp-1 transition-colors block mb-1"
                       >
                         {item.title}

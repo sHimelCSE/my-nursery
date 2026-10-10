@@ -12,6 +12,7 @@ export default async function sitemap() {
   // 1. Guaranteed Static Routes (Always available even if DB fails)
   const staticRoutes = [
     { url: `${baseUrl}`, lastModified: now, changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/products`, lastModified: now, changeFrequency: "daily", priority: 0.95 },
     { url: `${baseUrl}/collections`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${baseUrl}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
@@ -26,17 +27,19 @@ export default async function sitemap() {
     await dbConnect();
 
     const [products, categories, blogs] = await Promise.all([
-      Product.find({}, "_id updatedAt").lean(),
+      Product.find({}, "_id slug updatedAt").lean(),
       Category.find({}, "slug updatedAt").lean(),
       Blog.find({ status: "published" }, "slug updatedAt").lean(),
     ]);
 
-    const productRoutes = (products || []).map((p) => ({
-      url: `${baseUrl}/products/${p._id}`,
-      lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    }));
+    const productRoutes = (products || [])
+      .filter((p) => Boolean(p.slug))
+      .map((p) => ({
+        url: `${baseUrl}/products/${p.slug}`,
+        lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+        changeFrequency: "daily",
+        priority: 0.8,
+      }));
 
     const categoryRoutes = (categories || []).map((c) => ({
       url: `${baseUrl}/collections/${c.slug}`,

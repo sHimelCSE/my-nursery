@@ -62,8 +62,8 @@ export default function OrderSuccessPage({ params }) {
   }, []);
 
   const brandName = siteSettings.general?.siteName || "MSH BloomCraft";
-  const contactEmail = siteSettings.general?.contactEmail || "support@bloomcraftnursery.com";
-  const storeAddress = siteSettings.general?.storeAddress || "Sector 7, Uttara, Dhaka-1230, Bangladesh";
+  const contactEmail = siteSettings.general?.contactEmail || "";
+  const storeAddress = siteSettings.general?.storeAddress || "";
 
   const handleSetPassword = async (e) => {
     e.preventDefault();
@@ -335,9 +335,11 @@ export default function OrderSuccessPage({ params }) {
                   <p className="text-[12px] text-[#6B7280]">
                     Official Money Receipt & Customer Invoice
                   </p>
-                  <p className="text-[11px] text-[#9CA3AF]">
-                    {storeAddress} · {contactEmail}
-                  </p>
+                  {(storeAddress || contactEmail) && (
+                    <p className="text-[11px] text-[#9CA3AF]">
+                      {[storeAddress, contactEmail].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -540,7 +542,8 @@ export default function OrderSuccessPage({ params }) {
                     <Sprout className="w-4 h-4" /> Thank you for shopping green!
                   </p>
                   <p className="text-[11px] text-[#6B7280]">
-                    We hope your new plants bring joy and freshness to your home. For support or plant care guidance, reach out to us at {contactEmail}.
+                    We hope your new plants bring joy and freshness to your home.
+                    {contactEmail ? ` For support or plant care guidance, reach out to us at ${contactEmail}.` : ""}
                   </p>
                   <p className="text-[10px] text-[#9CA3AF]">
                     Quote Invoice #{invoiceNumber} for any customer care inquiries.

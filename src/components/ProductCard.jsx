@@ -94,26 +94,20 @@ export default function ProductCard({
 
   // Price calculations
   const price = Number(product.price || 0);
-  let originalPrice =
+  const rawOriginalPrice =
     product.originalPrice !== undefined && product.originalPrice !== null
       ? Number(product.originalPrice)
       : null;
 
-  // If discount percentage exists without originalPrice, calculate it
-  if (!originalPrice && product.discount && Number(product.discount) > 0) {
-    const dVal = Number(product.discount);
-    if (dVal < 100) {
-      originalPrice = Math.round(price / (1 - dVal / 100));
-    }
-  }
+  // STRICT DISCOUNT CONDITION
+  const hasDiscount = Boolean(
+    rawOriginalPrice &&
+    Number(rawOriginalPrice) > Number(price)
+  );
 
-  // Calculate dynamic discount percentage
-  let discountPercentage = 0;
-  if (originalPrice && originalPrice > price) {
-    discountPercentage = Math.round(((originalPrice - price) / originalPrice) * 100);
-  } else if (product.discount && Number(product.discount) > 0) {
-    discountPercentage = Math.round(Number(product.discount));
-  }
+  const discountPercent = hasDiscount
+    ? Math.round(((Number(rawOriginalPrice) - Number(price)) / Number(rawOriginalPrice)) * 100)
+    : 0;
 
   // Stock status
   const inStock =
@@ -150,10 +144,11 @@ export default function ProductCard({
 
   // Category or badge text
   const categoryText = product.category || "";
-  const badgeText =
-    product.badge || (discountPercentage > 0 ? `-${discountPercentage}%` : null);
+  const badgeText = hasDiscount
+    ? `-${discountPercent}%`
+    : (product.badge && !product.badge.includes("%") ? product.badge : null);
 
-  const productHref = prodId ? `/products/${prodId}` : "#";
+  const productHref = product.slug ? `/products/${product.slug}` : "#";
 
   // Handlers
   const handleCardClick = () => {
@@ -313,10 +308,10 @@ export default function ProductCard({
           <span className="text-base font-bold text-[#1E3F20]">
             ৳{price.toLocaleString()}
           </span>
-          {originalPrice && originalPrice > price && (
-            <del className="text-xs text-[#5A6B5C]/70 font-medium">
-              ৳{originalPrice.toLocaleString()}
-            </del>
+          {hasDiscount && (
+            <span className="line-through text-gray-400 text-xs font-medium">
+              ৳{Number(rawOriginalPrice).toLocaleString()}
+            </span>
           )}
         </div>
 

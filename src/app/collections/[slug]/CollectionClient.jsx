@@ -183,7 +183,7 @@ export default function CollectionClient({ category, initialProducts, slug }) {
               <ProductCard
                 key={product._id}
                 product={product}
-                onOpen={() => router.push(`/products/${product._id}`)}
+                onOpen={() => router.push(`/products/${product.slug}`)}
               />
             ))}
           </div>

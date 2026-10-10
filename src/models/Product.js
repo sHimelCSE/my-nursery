@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { slugify } from "@/lib/slugify";
 
 const VariantSchema = new Schema(
   {
@@ -40,10 +41,16 @@ const ProductSchema = new Schema(
       default: 0,
       min: [0, "Cost price cannot be negative"],
     },
+    categories: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Category",
+      },
+    ],
     category: {
       type: String,
-      required: [true, "Category is required"],
       trim: true,
+      default: "plant",
       lowercase: true,
     },
     tags: {
@@ -76,6 +83,23 @@ const ProductSchema = new Schema(
     variantGroupTitle: {
       type: String,
       default: "Select Option",
+    },
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+    },
+    hasCareGuide: {
+      type: Boolean,
+      default: true,
+    },
+    careGuide: {
+      lightLocation: { type: String, default: "" },
+      hydrationWatering: { type: String, default: "" },
+      safetyDifficulty: { type: String, default: "" },
+      horticulturistNote: { type: String, default: "" },
     },
     variants: {
       type: [VariantSchema],
@@ -118,11 +142,85 @@ const ProductSchema = new Schema(
   }
 );
 
+/**
+ * Clean slug generator from text
+ */
+export function generateSlug(text) {
+  return slugify(text);
+}
+
+/**
+ * Guarantees a 100% unique slug with duplicate protection (-1, -2, etc.)
+ */
+export async function getUniqueSlug(ProductModel, title, excludeId = null) {
+  let baseSlug = slugify(title) || "product";
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const query = { slug };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    const existing = await ProductModel.findOne(query).select("_id").lean();
+    if (!existing) {
+      return slug;
+    }
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+}
+
+// Pre-save hook: auto-generate unique slug if title modified or slug is missing
+ProductSchema.pre("save", async function () {
+  if (!this.slug || this.isModified("title")) {
+    const ProductModel = this.constructor;
+    this.slug = await getUniqueSlug(ProductModel, this.title, this._id);
+  }
+});
+
 // Prevent Next.js hot-reload from recompiling the model
 if (process.env.NODE_ENV !== "production") {
   delete mongoose.models.Product;
 }
 const Product =
   mongoose.models.Product || mongoose.model("Product", ProductSchema);
+
+let isMigratingSlugs = false;
+
+/**
+ * Auto-migration: assign unique slugs to all existing products in MongoDB lacking a slug
+ */
+export async function ensureProductSlugs() {
+  if (isMigratingSlugs) return;
+  isMigratingSlugs = true;
+  try {
+    const productsWithoutSlug = await Product.find(
+      {
+        $or: [{ slug: { $exists: false } }, { slug: null }, { slug: "" }],
+      },
+      "_id title"
+    ).lean();
+
+    if (productsWithoutSlug.length > 0) {
+      console.log(`[Auto-Migration] Found ${productsWithoutSlug.length} products without slug. Assigning unique slugs...`);
+      for (const prod of productsWithoutSlug) {
+        const uniqueSlug = await getUniqueSlug(Product, prod.title, prod._id);
+        await Product.updateOne(
+          {
+            _id: prod._id,
+            $or: [{ slug: { $exists: false } }, { slug: null }, { slug: "" }],
+          },
+          { $set: { slug: uniqueSlug } }
+        );
+      }
+      console.log(`[Auto-Migration] Successfully assigned unique slugs to all products.`);
+    }
+  } catch (err) {
+    console.error("[Auto-Migration] Error ensuring product slugs:", err);
+  } finally {
+    isMigratingSlugs = false;
+  }
+}
 
 export default Product;

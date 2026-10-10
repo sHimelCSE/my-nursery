@@ -17,10 +17,24 @@ export async function generateMetadata() {
     const settings = await SiteSetting.getSettings();
     if (settings?.general?.siteName) siteName = settings.general.siteName;
   } catch (err) {}
+  const title = `Botanical Collections | ${siteName}`;
+  const description =
+    "Explore our curated plant varieties, specialized potting soils, and handcrafted planters organized for every green space.";
   return {
-    title: "Botanical Collections",
-    description:
-      "Explore our curated plant varieties, specialized potting soils, and handcrafted planters organized for every green space.",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: "https://my-nursery-flame.vercel.app/collections",
+      siteName,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
   };
 }
 
@@ -38,19 +52,33 @@ export default async function CollectionsPage() {
     .lean();
 
   // Fetch all products to calculate collection counts
-  const products = await Product.find({}, "category").lean();
+  const products = await Product.find({}, "category categoryId categories").lean();
 
   const collectionsWithCount = categories.map((cat) => {
     const slugRegex = new RegExp(`^${cat.slug}$`, "i");
     const nameRegex = new RegExp(`^${cat.name}$`, "i");
-    const count = products.filter(
-      (p) => slugRegex.test(p.category) || nameRegex.test(p.category)
-    ).length;
+    const catId = cat._id.toString();
+
+    const count = products.filter((p) => {
+      const pCat = p.category ? p.category.toString() : "";
+      const pCatId = p.categoryId ? p.categoryId.toString() : "";
+      const inCategoriesArray =
+        Array.isArray(p.categories) &&
+        p.categories.some((c) => (c?._id ? c._id.toString() : c?.toString()) === catId);
+      return (
+        slugRegex.test(pCat) ||
+        nameRegex.test(pCat) ||
+        pCatId === catId ||
+        pCat === catId ||
+        inCategoriesArray
+      );
+    }).length;
 
     return {
       ...cat,
       _id: cat._id.toString(),
       itemCount: count,
+      productCount: count,
     };
   });
 
@@ -133,10 +161,10 @@ export default async function CollectionsPage() {
 
                   {/* Item Count Badge */}
                   <div className="absolute top-3.5 right-3.5 z-10 bg-white/95 backdrop-blur-md text-[#1E3F20] text-xs font-semibold px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 border border-[#1E3F20]/10">
-                    <Sprout className="w-3.5 h-3.5" />
+                    {/* <Sprout className="w-3.5 h-3.5" /> */}
                     <span>
                       {collection.itemCount}{" "}
-                      {collection.itemCount === 1 ? "Plant" : "Plants"} Available
+                      {collection.itemCount <= 1 ? "item" : "items"} Available
                     </span>
                   </div>
                 </Link>

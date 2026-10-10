@@ -16,81 +16,6 @@ import useCartStore from "@/lib/cartStore";
 import useWishlistStore from "@/lib/wishlistStore";
 import { App } from "antd";
 
-const FALLBACK_DEAL_PRODUCTS = [
-  {
-    _id: "deal-1",
-    title: "Monstera Deliciosa (Swiss Cheese)",
-    price: 380,
-    originalPrice: 450,
-    images: ["https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600&q=80"],
-    stock: 12,
-    category: "plant",
-  },
-  {
-    _id: "deal-2",
-    title: "Peace Lily (Spathiphyllum)",
-    price: 320,
-    originalPrice: 380,
-    images: ["https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=600&q=80"],
-    stock: 8,
-    category: "plant",
-  },
-  {
-    _id: "deal-3",
-    title: "Sansevieria Golden Hahnii (Snake Plant)",
-    price: 260,
-    originalPrice: 320,
-    images: ["https://images.unsplash.com/photo-1572688484438-313a6e50c333?w=600&q=80"],
-    stock: 15,
-    category: "plant",
-  },
-  {
-    _id: "deal-4",
-    title: "Ficus Retusa Bonsai Specimen",
-    price: 950,
-    originalPrice: 1150,
-    images: ["https://images.unsplash.com/photo-1512428813834-c702c7702b78?w=600&q=80"],
-    stock: 5,
-    category: "plant",
-  },
-  {
-    _id: "deal-5",
-    title: "Calathea Orbifolia Statement Foliage",
-    price: 520,
-    originalPrice: 620,
-    images: ["https://images.unsplash.com/photo-1502977249166-824b3a8a4d6d?w=600&q=80"],
-    stock: 6,
-    category: "plant",
-  },
-  {
-    _id: "deal-6",
-    title: "ZZ Plant (Zamioculcas Zamiifolia)",
-    price: 410,
-    originalPrice: 490,
-    images: ["https://images.unsplash.com/photo-1632207691143-643e2a9a9361?w=600&q=80"],
-    stock: 9,
-    category: "plant",
-  },
-  {
-    _id: "deal-7",
-    title: "Premium Potted Fiddle Leaf Fig",
-    price: 780,
-    originalPrice: 920,
-    images: ["https://images.unsplash.com/photo-1545241047-6083a3684587?w=600&q=80"],
-    stock: 4,
-    category: "plant",
-  },
-  {
-    _id: "deal-8",
-    title: "Handcrafted Glazed Ceramic Planter",
-    price: 290,
-    originalPrice: 350,
-    images: ["https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=600&q=80"],
-    stock: 20,
-    category: "tool",
-  },
-];
-
 /**
  * @param {{
  *   data?: any;
@@ -121,7 +46,6 @@ export default function BotanicalDealsSection({
   const subtitle =
     data?.subtitle ||
     "Seasonal markdowns on our healthiest, nursery-grown favourites.";
-  const fallbackDiscount = Number(data?.discountPercentage) || 15;
 
   // ─── Extract and normalize deal products ───────────────────────────────────
   const productsList = useMemo(() => {
@@ -132,32 +56,33 @@ export default function BotanicalDealsSection({
           data.dealProductIds.length > 0 &&
           typeof data.dealProductIds[0] === "object"
         ? data.dealProductIds
-        : fallbackProducts.length > 0
+        : fallbackProducts && fallbackProducts.length > 0
         ? fallbackProducts
-        : FALLBACK_DEAL_PRODUCTS;
+        : [];
 
-    return raw.map((p, idx) => {
-      const price = Number(p.price) || 0;
-      const originalPrice =
-        p.originalPrice || Math.round(price / (1 - fallbackDiscount / 100));
-      const image =
-        (Array.isArray(p.images) && p.images[0]) ||
-        p.image ||
-        FALLBACK_DEAL_PRODUCTS[idx % FALLBACK_DEAL_PRODUCTS.length].images[0];
+    return raw
+      .filter((p) => p && (p.title || p.name) && (p.price !== undefined || p.sale_price !== undefined))
+      .map((p, idx) => {
+        const price = Number(p.price ?? p.sale_price) || 0;
+        const originalPrice =
+          p.originalPrice && Number(p.originalPrice) > price ? Number(p.originalPrice) : null;
+        const image =
+          (Array.isArray(p.images) && p.images[0]) ||
+          p.image ||
+          "";
 
-      return {
-        ...p,
-        _id: p._id || p.id || `deal-${idx}`,
-        title: p.title || "Nursery Botanical Specimen",
-        price,
-        originalPrice,
-        image,
-        images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [image],
-        stock: p.stock_quantity ?? p.stock ?? 10,
-        discount: fallbackDiscount,
-      };
-    });
-  }, [data?.dealProducts, data?.dealProductIds, fallbackProducts, fallbackDiscount]);
+        return {
+          ...p,
+          _id: p._id || p.id || `deal-${idx}`,
+          title: p.title || p.name || "",
+          price,
+          originalPrice,
+          image,
+          images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (image ? [image] : []),
+          stock: p.stock_quantity ?? p.stock ?? 0,
+        };
+      });
+  }, [data?.dealProducts, data?.dealProductIds, fallbackProducts]);
 
   // ─── Real-Time Countdown Timer ─────────────────────────────────────────────
   const [timeLeft, setTimeLeft] = useState({
@@ -254,6 +179,10 @@ export default function BotanicalDealsSection({
     }
     toggleWishlistStore(product);
   };
+
+  if (data?.isEnabled === false || productsList.length === 0) {
+    return null;
+  }
 
   return (
     <section

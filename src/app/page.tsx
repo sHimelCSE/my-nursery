@@ -4,6 +4,13 @@ import HomeClient from "@/components/HomeClient";
 import dbConnect from "@/lib/dbConnect";
 import SiteSetting, { DEFAULT_SITE_SETTINGS } from "@/models/SiteSetting";
 
+import {
+  getCachedAllProducts,
+  getCachedAllCategories,
+  getCachedHomepageConfig,
+  getCachedRecentBlogs,
+} from "@/lib/cachedProducts";
+
 export async function generateMetadata(): Promise<Metadata> {
   let siteName = DEFAULT_SITE_SETTINGS.general.siteName || "MSH BloomCraft";
 
@@ -38,10 +45,23 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [products, categories, config, blogs] = await Promise.all([
+    getCachedAllProducts().catch(() => []),
+    getCachedAllCategories().catch(() => []),
+    getCachedHomepageConfig().catch(() => null),
+    getCachedRecentBlogs().catch(() => []),
+  ]);
+
   return (
     <Suspense fallback={null}>
-      <HomeClient />
+      <HomeClient
+        initialProducts={products}
+        initialCategories={categories}
+        initialConfig={config}
+        initialBlogs={blogs}
+      />
     </Suspense>
   );
 }
+

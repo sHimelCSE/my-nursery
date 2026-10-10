@@ -43,60 +43,17 @@ import { DEFAULT_PAGE_THEME_CONFIG } from "@/constants/defaultPageThemeConfig";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=80";
 
-const GALLERY_ANGLES = [
-  "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=80",
-  "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=800&q=80",
-  "https://images.unsplash.com/photo-1545241047-6083a3684587?w=800&q=80",
-  "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=800&q=80",
-];
-
-const POT_SIZES = [
-  { id: "S", label: 'S - 4" Pot', multiplier: 0.85, sub: "Desktop & Windowsill" },
-  { id: "M", label: 'M - 6" Pot', multiplier: 1.0, sub: "Standard Living Room" },
-  { id: "L", label: 'L - 8" Pot', multiplier: 1.35, sub: "Floor Accent & Balcony" },
-  { id: "XL", label: 'XL - 10" Pot', multiplier: 1.7, sub: "Full Statement Specimen" },
-];
-
-const SAMPLE_REVIEWS = [
-  {
-    id: 1,
-    name: "Dr. Farhana Yasmin",
-    location: "Uttara, Dhaka",
-    date: "Sep 24, 2026",
-    rating: 5,
-    title: "Remarkable botanical specimen and eco-cradle packaging",
-    comment:
-      "Arrived in pristine condition. Root moisture wrap kept the soil damp, and the foliage had zero transit bruising. The ceramic saucer pairing is flawless.",
-    verified: true,
-  },
-  {
-    id: 2,
-    name: "Tanvir Ahmed",
-    location: "Nasirabad, Chittagong",
-    date: "Sep 18, 2026",
-    rating: 5,
-    title: "Thriving new leaf within 10 days",
-    comment:
-      "Followed the weekly watering guide provided in the care handbook. Already unfurling a healthy new fenestrated leaf. Highly recommended!",
-    verified: true,
-  },
-  {
-    id: 3,
-    name: "Nusrat Jahan",
-    location: "Dhanmondi, Dhaka",
-    date: "Sep 09, 2026",
-    rating: 4,
-    title: "Beautiful glossy foliage, prompt doorstep delivery",
-    comment:
-      "Very happy with the plant quality. Cash on Delivery was seamless. Will definitely order the organic vermicompost pack next.",
-    verified: true,
-  },
-];
-
-export default function ProductDetailClient({ params, id: directId }) {
-  // Support both direct id, direct params, and Promise params safely
+export default function ProductDetailClient({
+  params,
+  id: directId,
+  slug: directSlug,
+  initialProduct,
+  categoryName: directCategoryName,
+  categoryUrl: directCategoryUrl,
+}) {
+  // Support both direct id, direct slug, direct params, and Promise params safely
   const resolvedParams = typeof params?.then === "function" ? use(params) : params;
-  const id = directId || resolvedParams?.id;
+  const id = directSlug || directId || resolvedParams?.slug || resolvedParams?.id;
 
   const router = useRouter();
   const { message } = App.useApp();
@@ -109,12 +66,11 @@ export default function ProductDetailClient({ params, id: directId }) {
   const toggleWishlistStore = useWishlistStore((s) => s.toggleWishlist);
 
   const [mounted, setMounted] = useState(false);
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState(initialProduct || null);
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(POT_SIZES[1]); // Default Medium (1.0x)
   const [activeTab, setActiveTab] = useState("description"); // description | care | reviews
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -239,11 +195,11 @@ export default function ProductDetailClient({ params, id: directId }) {
     };
   }, [id]);
 
-  // Fetch product data
+  // Fetch product data (only if not provided by server component)
   useEffect(() => {
     let isSubscribed = true;
     async function fetchProduct() {
-      if (!id) return;
+      if (!id || initialProduct?._id) return;
       try {
         setLoading(true);
         const res = await fetch(`/api/products/${id}`);
@@ -267,7 +223,7 @@ export default function ProductDetailClient({ params, id: directId }) {
     return () => {
       isSubscribed = false;
     };
-  }, [id]);
+  }, [id, initialProduct]);
 
   // Fetch related products
   useEffect(() => {
@@ -302,14 +258,20 @@ export default function ProductDetailClient({ params, id: directId }) {
   const currentPrice = hasDynamicVariants && selectedVariant
     ? Number(selectedVariant.price)
     : product
-      ? Math.round(product.price * (selectedSize?.multiplier || 1.0))
+      ? Number(product.price) || 0
       : 0;
 
-  const originalPrice = hasDynamicVariants && selectedVariant && Number(selectedVariant.originalPrice) > 0
+  const originalPrice = hasDynamicVariants && selectedVariant && Number(selectedVariant.originalPrice) > Number(selectedVariant.price)
     ? Number(selectedVariant.originalPrice)
-    : product?.originalPrice > 0
+    : product?.originalPrice && Number(product.originalPrice) > Number(product.price)
       ? Number(product.originalPrice)
-      : Math.round(currentPrice * 1.34);
+      : null;
+
+  const showDiscount = Boolean(originalPrice && originalPrice > currentPrice);
+
+  const discountPercent = showDiscount
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+    : 0;
 
   const currentStock = hasDynamicVariants && selectedVariant
     ? Number(selectedVariant.stock ?? 10)
@@ -317,17 +279,12 @@ export default function ProductDetailClient({ params, id: directId }) {
 
   const inStock = currentStock > 0;
 
-  const discountPercent =
-    originalPrice > currentPrice
-      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-      : 0;
-
-  // Build image list: if multiple images exist in db use them, else fallback to varied angles
-  const images = product?.images && product.images.length > 1
-    ? product.images
-    : product?.images?.[0]
-      ? [product.images[0], ...GALLERY_ANGLES.slice(1)]
-      : GALLERY_ANGLES;
+  // Build image list: only use real images from product
+  const images = Array.isArray(product?.images) && product.images.length > 0
+    ? product.images.filter(Boolean)
+    : product?.image
+      ? [product.image]
+      : [];
 
   const handleAddToCart = (openDrawer = true) => {
     if (!product || !inStock) return;
@@ -335,11 +292,11 @@ export default function ProductDetailClient({ params, id: directId }) {
     const variantName = hasDynamicVariants && selectedVariant ? selectedVariant.name : null;
     const cartItemId = variantName
       ? `${product._id}-${variantName.replace(/\s+/g, "-").toLowerCase()}`
-      : `${product._id}-${selectedSize?.id || "standard"}`;
+      : String(product._id);
 
     const cartTitle = variantName
       ? `${product.title} (${variantName})`
-      : `${product.title} (${selectedSize?.label || "Standard"})`;
+      : product.title;
 
     addItem({
       _id: cartItemId,
@@ -494,10 +451,15 @@ export default function ProductDetailClient({ params, id: directId }) {
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
             <Link
-              href={`/#products?category=${product.category}`}
+              href={
+                directCategoryUrl ||
+                (product.category
+                  ? `/collections/${product.category.toLowerCase().replace(/[\s_]+/g, "-")}`
+                  : "/collections")
+              }
               className="hover:text-[#2D5A27] transition-colors capitalize"
             >
-              {categoryLabel}
+              {directCategoryName || categoryLabel}
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-semibold text-gray-900 truncate max-w-xs sm:max-w-md">
@@ -515,18 +477,24 @@ export default function ProductDetailClient({ params, id: directId }) {
           <div className="lg:col-span-6 space-y-4">
             {/* Large Main Image Container */}
             <div className="rounded-3xl border border-gray-100 bg-white p-2 sm:p-2 shadow-xs flex items-center justify-center min-h-[420px] relative overflow-hidden group">
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                <span className="bg-[#2D5A27] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-xs">
-                  -34% OFF
-                </span>
-                <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold px-3 py-1 rounded-full border border-emerald-200">
-                  Botanical Quality
-                </span>
-              </div>
+              {(showDiscount || product.category) && (
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                  {showDiscount && discountPercent > 0 && (
+                    <span className="bg-[#2D5A27] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-xs">
+                      -{discountPercent}%
+                    </span>
+                  )}
+                  {product.category && (
+                    <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold px-3 py-1 rounded-full border border-emerald-200">
+                      {product.category}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className="w-full aspect-square max-h-[460px] relative rounded-2xl overflow-hidden bg-[#FBFBFA]">
                 <Image
-                  src={images[activeImage] || FALLBACK_IMG}
+                  src={images[activeImage] || product.image || FALLBACK_IMG}
                   alt={product.title}
                   fill
                   priority
@@ -536,60 +504,49 @@ export default function ProductDetailClient({ params, id: directId }) {
               </div>
             </div>
 
-            {/* Horizontal Thumbnail Carousel */}
-            <div className="grid grid-cols-4 gap-3 sm:gap-4">
-              {images.slice(0, 4).map((img, idx) => (
-                <button
-                  key={`thumb-${idx}`}
-                  type="button"
-                  onClick={() => setActiveImage(idx)}
-                  className={`rounded-2xl p-1 bg-white border-2 overflow-hidden aspect-square transition-all duration-200 cursor-pointer shadow-2xs ${activeImage === idx
-                      ? "border-[#7BAE37] ring-2 ring-[#7BAE37]/20 scale-102"
-                      : "border-gray-100 hover:border-gray-300 opacity-80 hover:opacity-100"
-                    }`}
-                >
-                  <div className="relative w-full h-full rounded-xl overflow-hidden">
-                    <Image
-                      src={img || FALLBACK_IMG}
-                      alt={`${product.title} view ${idx + 1}`}
-                      fill
-                      sizes="(max-width: 640px) 25vw, 120px"
-                      className="object-cover"
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
+            {/* Horizontal Thumbnail Carousel (Only if multiple images) */}
+            {images.length > 1 && (
+              <div className="grid grid-cols-4 gap-3 sm:gap-4">
+                {images.slice(0, 4).map((img, idx) => (
+                  <button
+                    key={`thumb-${idx}`}
+                    type="button"
+                    onClick={() => setActiveImage(idx)}
+                    className={`rounded-2xl p-1 bg-white border-2 overflow-hidden aspect-square transition-all duration-200 cursor-pointer shadow-2xs ${activeImage === idx
+                        ? "border-[#7BAE37] ring-2 ring-[#7BAE37]/20 scale-102"
+                        : "border-gray-100 hover:border-gray-300 opacity-80 hover:opacity-100"
+                      }`}
+                  >
+                    <div className="relative w-full h-full rounded-xl overflow-hidden">
+                      <Image
+                        src={img || FALLBACK_IMG}
+                        alt={`${product.title} view ${idx + 1}`}
+                        fill
+                        sizes="(max-width: 640px) 25vw, 120px"
+                        className="object-cover"
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ════ RIGHT COLUMN: PRODUCT DETAILS & ACTIONS ════ */}
           <div className="lg:col-span-6 space-y-6">
-            {/* Tags & Category Badges (Dynamic) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-[#E8F5E9] text-[#2D5A27] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-2xs">
-                {product.category === "plant" ? "Indoor Foliage" : product.category === "fertilizer" ? "Organic Feed" : "Ceramic & Tools"}
-              </span>
-
-              {Array.isArray(product.tags) && product.tags.length > 0 ? (
-                product.tags.map((tag, tIdx) => (
+            {/* Tags / Badges above title */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {product.tags.map((tag, tIdx) => (
                   <span
                     key={`pdp-tag-${tIdx}`}
                     className="bg-[#F1F8E9] text-[#2D6A4F] border border-emerald-200/50 text-[11px] font-semibold px-3 py-1 rounded-full shadow-2xs"
                   >
                     {tag}
                   </span>
-                ))
-              ) : (
-                <>
-                  <span className="bg-[#F1F8E9] text-[#558B2F] text-[11px] font-semibold px-3 py-1 rounded-full">
-                    Air Purifier
-                  </span>
-                  <span className="bg-gray-100 text-gray-600 text-[11px] font-semibold px-3 py-1 rounded-full">
-                    Eco Certified
-                  </span>
-                </>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Product Title */}
             <div>
@@ -663,14 +620,14 @@ export default function ProductDetailClient({ params, id: directId }) {
                 <span className="text-3xl sm:text-4xl font-extrabold text-[#2D6A4F]">
                   ৳{currentPrice.toLocaleString("en-US")}
                 </span>
-                {originalPrice > currentPrice && (
-                  <del className="text-base text-gray-400 font-medium">
+                {showDiscount && originalPrice && (
+                  <span className="line-through text-gray-400 text-base font-medium">
                     ৳{originalPrice.toLocaleString("en-US")}
-                  </del>
+                  </span>
                 )}
-                {discountPercent > 0 && (
+                {showDiscount && discountPercent > 0 && (
                   <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                    Save {discountPercent}%
+                    -{discountPercent}%
                   </span>
                 )}
               </div>
@@ -711,57 +668,65 @@ export default function ProductDetailClient({ params, id: directId }) {
               </div>
             </div>
 
-            {/* Dynamic Top Summary */}
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {product.shortDescription ||
-                product.description ||
-                "Cultivated in controlled nursery conditions for optimal root development, balanced foliage growth, and seamless indoor acclimatization."}
-            </p>
+            {/* Short Description */}
+            {product.shortDescription ? (
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {product.shortDescription}
+              </p>
+            ) : null}
 
             {/* Plant Care Quick-Stats Badges (Conditionally rendered) */}
-            {product.showCareGuideBadges !== false && (
+            {product.showCareGuideBadges && product.careBadges && (product.careBadges.sunlight || product.careBadges.water || product.careBadges.petSafe || product.careBadges.difficulty) ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FFF9E6] border border-amber-100/80">
-                  <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase text-amber-900">Sunlight</span>
-                    <span className="block text-[11px] text-gray-600 truncate">
-                      {product.careBadges?.sunlight || "Medium Indirect"}
-                    </span>
+                {product.careBadges.sunlight && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FFF9E6] border border-amber-100/80">
+                    <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-[10px] font-bold uppercase text-amber-900">Sunlight</span>
+                      <span className="block text-[11px] text-gray-600 truncate">
+                        {product.careBadges.sunlight}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#E8F4FD] border border-sky-100/80">
-                  <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase text-sky-900">Water</span>
-                    <span className="block text-[11px] text-gray-600 truncate">
-                      {product.careBadges?.water || "Once a week"}
-                    </span>
+                {product.careBadges.water && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#E8F4FD] border border-sky-100/80">
+                    <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-[10px] font-bold uppercase text-sky-900">Water</span>
+                      <span className="block text-[11px] text-gray-600 truncate">
+                        {product.careBadges.water}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#EAF7EE] border border-emerald-100/80">
-                  <PawPrint className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase text-emerald-900">Pet Safe</span>
-                    <span className="block text-[11px] text-gray-600 truncate">
-                      {product.careBadges?.petSafe || "Non-Toxic"}
-                    </span>
+                {product.careBadges.petSafe && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#EAF7EE] border border-emerald-100/80">
+                    <PawPrint className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-[10px] font-bold uppercase text-emerald-900">Pet Safe</span>
+                      <span className="block text-[11px] text-gray-600 truncate">
+                        {product.careBadges.petSafe}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#F1F8E9] border border-green-100/80">
-                  <Sprout className="w-4 h-4 text-green-600 shrink-0" />
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase text-green-900">Difficulty</span>
-                    <span className="block text-[11px] text-gray-600 truncate">
-                      {product.careBadges?.difficulty || "Beginner"}
-                    </span>
+                {product.careBadges.difficulty && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#F1F8E9] border border-green-100/80">
+                    <Sprout className="w-4 h-4 text-green-600 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-[10px] font-bold uppercase text-green-900">Difficulty</span>
+                      <span className="block text-[11px] text-gray-600 truncate">
+                        {product.careBadges.difficulty}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            )}
+            ) : null}
 
             {/* Dynamic Variant Selector (Shopify-Style) */}
             {hasDynamicVariants ? (
@@ -998,169 +963,140 @@ export default function ProductDetailClient({ params, id: directId }) {
         </div>
 
         {/* ─── 3. TABBED INFORMATION SECTION ─────────────────────────────────── */}
-        <div id="reviews-tab" className="mt-20 bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
-          {/* Tab Navigation Headers */}
-          <div className="flex border-b border-gray-100 overflow-x-auto bg-[#FBFBFA]">
-            {[
-              { id: "description", label: "Description" },
-              ...(product.showCareGuideBadges !== false ? [{ id: "care", label: "Care Guide" }] : []),
-              { id: "reviews", label: `Customer Reviews (${reviewsStats.totalReviews})` },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-6 sm:px-8 text-sm font-bold tracking-tight transition-all border-b-2 cursor-pointer whitespace-nowrap ${activeTab === tab.id
-                    ? "border-[#7BAE37] text-[#2D5A27] bg-white"
-                    : "border-transparent text-gray-500 hover:text-gray-900"
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {(() => {
+          const hasCareGuidePopulated =
+            product.hasCareGuide !== false &&
+            Boolean(
+              product.careGuide?.lightLocation?.trim() ||
+              product.careGuide?.hydrationWatering?.trim() ||
+              product.careGuide?.safetyDifficulty?.trim() ||
+              product.careGuide?.horticulturistNote?.trim() ||
+              product.careBadges?.sunlight ||
+              product.careBadges?.water ||
+              product.careBadges?.petSafe ||
+              product.careBadges?.difficulty ||
+              product.care_instructions?.trim()
+            );
 
-          <div className="p-6 sm:p-10">
-            {/* Tab 1: Description */}
-            {activeTab === "description" && (
-              <div className="space-y-6 max-w-4xl">
-                <div className="space-y-3">
-                  <h3 className="text-xl font-bold text-gray-900 font-serif">
-                    {product.customTabTitle || productPageConfig.defaultTabTitle || "Botanical Background & Characteristics"}
-                  </h3>
-                  {(() => {
-                    const cleanHtml = (product.fullDescriptionHtml || product.description || "")
-                      .replace(/&nbsp;/g, " ");
+          return (
+            <div id="reviews-tab" className="mt-20 bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+              {/* Tab Navigation Headers */}
+              <div className="flex border-b border-gray-100 overflow-x-auto bg-[#FBFBFA]">
+                {[
+                  { id: "description", label: "Description" },
+                  ...(hasCareGuidePopulated ? [{ id: "care", label: "Care Guide" }] : []),
+                  { id: "reviews", label: `Customer Reviews (${reviewsStats.totalReviews})` },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`py-4 px-6 sm:px-8 text-sm font-bold tracking-tight transition-all border-b-2 cursor-pointer whitespace-nowrap ${activeTab === tab.id
+                        ? "border-[#7BAE37] text-[#2D5A27] bg-white"
+                        : "border-transparent text-gray-500 hover:text-gray-900"
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                    return cleanHtml ? (
-                      <div
-                        className="prose prose-emerald max-w-none text-slate-700 leading-relaxed text-sm break-words whitespace-normal overflow-wrap-anywhere my-4 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>h1]:font-bold [&>h2]:font-bold [&>h3]:font-bold"
-                        style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}
-                        dangerouslySetInnerHTML={{ __html: cleanHtml }}
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                        Our botanical specimens are hand-selected from specialized nursery farm stocks in Bangladesh. Acclimatized to domestic indoor humidity levels, each specimen showcases healthy foliage pigmentation, robust stem structures, and strong root health.
-                      </p>
-                    );
-                  })()}
-                </div>
+              <div className="p-6 sm:p-10">
+                {/* Tab 1: Description */}
+                {activeTab === "description" && (
+                  <div className="space-y-6 max-w-4xl">
+                    {(() => {
+                      const cleanHtml = (product.fullDescriptionHtml ? product.fullDescriptionHtml : "")
+                        .replace(/&nbsp;/g, " ")
+                        .trim();
 
-                {/* 2 Feature Cards */}
-                {productPageConfig.featureCards?.isEnabled !== false && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
-                        <Sprout className="w-4 h-4 text-[#7BAE37]" />
-                        {productPageConfig.featureCards?.card1?.title || "Air Purification & Aesthetics"}
-                      </h4>
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        {productPageConfig.featureCards?.card1?.description ||
-                          "Assists in filtering airborne particles and volatile organic compounds while introducing natural organic contours into living or office spaces."}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-[#FBFBFA] border border-gray-100 space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
-                        <RotateCcw className="w-4 h-4 text-[#7BAE37]" />
-                        {productPageConfig.featureCards?.card2?.title || "Safe Nursery Packaging"}
-                      </h4>
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        {productPageConfig.featureCards?.card2?.description ||
-                          "Enclosed in custom shock-absorbing biodegradable packaging with moisture root-capsules ensuring hydration throughout national transit."}
-                      </p>
-                    </div>
+                      return cleanHtml ? (
+                        <div className="space-y-3">
+                          <h3 className="text-xl font-bold text-gray-900 font-serif">
+                            {product.customTabTitle || productPageConfig.defaultTabTitle || "Description"}
+                          </h3>
+                          <div
+                            className="prose prose-emerald max-w-none text-slate-700 leading-relaxed text-sm break-words whitespace-normal overflow-wrap-anywhere my-4 [&>p]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>h1]:font-bold [&>h2]:font-bold [&>h3]:font-bold"
+                            style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}
+                            dangerouslySetInnerHTML={{ __html: cleanHtml }}
+                          />
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Tab 2: Care Guide */}
-            {activeTab === "care" && (
-              <div className="space-y-6 max-w-4xl">
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-gray-900 font-serif">
-                    Complete Botanical Plant Care Guide
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Follow these expert horticultural guidelines to keep your specimen thriving year-round.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-5 rounded-2xl bg-[#FFF9E6] border border-amber-100 space-y-2">
-                    <div className="w-8 h-8 rounded-xl bg-white text-amber-500 flex items-center justify-center shadow-2xs">
-                      <Sun className="w-4 h-4" />
+                {/* Tab 2: Care Guide */}
+                {activeTab === "care" && hasCareGuidePopulated && (
+                  <div className="space-y-6 max-w-4xl">
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-gray-900 font-serif">
+                        Complete Botanical Plant Care Guide
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Follow these expert horticultural guidelines to keep your specimen thriving year-round.
+                      </p>
                     </div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Light &amp; Location
-                    </h4>
-                    {product.careBadges?.sunlight && (
-                      <div className="inline-block px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[11px] font-bold">
-                        {product.careBadges.sunlight}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      Position in bright indirect sunlight. Avoid placing directly in front of blazing western midday sun or cold drafts from air conditioning vents.
-                    </p>
-                  </div>
 
-                  <div className="p-5 rounded-2xl bg-[#E8F4FD] border border-sky-100 space-y-2">
-                    <div className="w-8 h-8 rounded-xl bg-white text-sky-500 flex items-center justify-center shadow-2xs">
-                      <Droplets className="w-4 h-4" />
-                    </div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Hydration &amp; Watering
-                    </h4>
-                    {product.careBadges?.water && (
-                      <div className="inline-block px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 text-[11px] font-bold">
-                        {product.careBadges.water}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      Water thoroughly once the top 1–2 inches of soil feel dry. Allow excess water to drain out of the pot base to avoid standing water.
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-[#F1F8E9] border border-green-100 space-y-2">
-                    <div className="w-8 h-8 rounded-xl bg-white text-[#2D5A27] flex items-center justify-center shadow-2xs">
-                      <Sprout className="w-4 h-4" />
-                    </div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Safety &amp; Difficulty
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {product.careBadges?.petSafe && (
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold">
-                          {product.careBadges.petSafe}
-                        </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {(product.careGuide?.lightLocation?.trim() || product.careBadges?.sunlight) && (
+                        <div className="p-5 rounded-2xl bg-[#FFF9E6] border border-amber-100 space-y-2">
+                          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-xs">
+                            <Sun className="w-5 h-5 text-amber-500" />
+                          </div>
+                          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                            LIGHT &amp; LOCATION
+                          </h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                            {product.careGuide?.lightLocation || product.careBadges?.sunlight}
+                          </p>
+                        </div>
                       )}
-                      {product.careBadges?.difficulty && (
-                        <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-900 text-[11px] font-bold">
-                          {product.careBadges.difficulty}
-                        </span>
+
+                      {(product.careGuide?.hydrationWatering?.trim() || product.careBadges?.water) && (
+                        <div className="p-5 rounded-2xl bg-[#E8F4FD] border border-sky-100 space-y-2">
+                          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-xs">
+                            <Droplets className="w-5 h-5 text-sky-500" />
+                          </div>
+                          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                            HYDRATION &amp; WATERING
+                          </h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                            {product.careGuide?.hydrationWatering || product.careBadges?.water}
+                          </p>
+                        </div>
+                      )}
+
+                      {(product.careGuide?.safetyDifficulty?.trim() || product.careBadges?.petSafe || product.careBadges?.difficulty) && (
+                        <div className="p-5 rounded-2xl bg-[#F1F8E9] border border-green-100 space-y-2">
+                          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-xs">
+                            <Sparkles className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                            SAFETY &amp; DIFFICULTY
+                          </h4>
+                          <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                            {product.careGuide?.safetyDifficulty ||
+                              [product.careBadges?.petSafe, product.careBadges?.difficulty].filter(Boolean).join(" • ")}
+                          </p>
+                        </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      Apply organic vermicompost or balanced NPK water-soluble fertilizer every 4 weeks during active growth (March to October).
-                    </p>
-                  </div>
-                </div>
 
-                {/* Specific Care Note from database */}
-                {product.care_instructions && (
-                  <div className="p-4 rounded-2xl bg-[#E8F5E9] border border-emerald-200">
-                    <div className="text-xs font-bold text-[#2D5A27] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Specific Horticulturist Care Note:</span>
-                    </div>
-                    <p className="text-xs text-gray-700 italic leading-relaxed">
-                      &quot;{product.care_instructions}&quot;
-                    </p>
+                    {/* Bottom Note */}
+                    {(product.careGuide?.horticulturistNote?.trim() || product.care_instructions?.trim()) && (
+                      <div className="p-4 rounded-2xl bg-[#E8F5E9] border border-emerald-200">
+                        <div className="text-xs font-bold text-[#2D5A27] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                          <span>SPECIFIC HORTICULTURIST CARE NOTE:</span>
+                        </div>
+                        <p className="text-xs text-gray-700 italic leading-relaxed">
+                          &quot;{product.careGuide?.horticulturistNote || product.care_instructions}&quot;
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
             {/* Tab 3: Customer Reviews */}
             {activeTab === "reviews" && (
@@ -1511,8 +1447,10 @@ export default function ProductDetailClient({ params, id: directId }) {
                 </div>
               </div>
             )}
-          </div>
-        </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ─── 4. RELATED PRODUCTS & CUSTOM COLLECTION ───────────────────────── */}
         {productPageConfig.relatedSection?.isEnabled !== false && (

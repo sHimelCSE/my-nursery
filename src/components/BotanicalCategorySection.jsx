@@ -32,8 +32,8 @@ const ICON_MAP = {
 };
 
 export default function BotanicalCategorySection({
-  section,
-  data,
+  section = null,
+  data = null,
   categories: initialCategories,
   onSelectCategory,
 }) {
@@ -71,25 +71,36 @@ export default function BotanicalCategorySection({
     };
   }, [initialCategories]);
 
-  // Determine the exact 4 categories to render
+  // Determine the exact 4 categories to render with accurate product counts
   const displayCategories = useMemo(() => {
     const rawFeatured = data?.featuredCategoryIds;
+    const idMap = new Map(
+      allCategories.map((c) => [c._id?.toString() || c.id?.toString(), c])
+    );
 
-    // Case 1: Populated objects with name and productCount
+    // Case 1: Populated objects with name
     if (
       Array.isArray(rawFeatured) &&
       rawFeatured.length > 0 &&
       typeof rawFeatured[0] === "object" &&
       rawFeatured[0]?.name
     ) {
-      return rawFeatured.slice(0, 4);
+      return rawFeatured.slice(0, 4).map((cat) => {
+        const id = cat._id?.toString() || cat.id?.toString();
+        const matched = id ? idMap.get(id) : null;
+        const realCount =
+          typeof cat.productCount === "number" && cat.productCount > 0
+            ? cat.productCount
+            : (matched?.productCount ?? cat.productCount ?? 0);
+        return {
+          ...cat,
+          productCount: realCount,
+        };
+      });
     }
 
     // Case 2: Array of category IDs (strings or {_id})
     if (Array.isArray(rawFeatured) && rawFeatured.length > 0 && allCategories.length > 0) {
-      const idMap = new Map(
-        allCategories.map((c) => [c._id?.toString() || c.id?.toString(), c])
-      );
       const matched = rawFeatured
         .map((item) => {
           const id = typeof item === "object" && item?._id ? item._id.toString() : item?.toString();

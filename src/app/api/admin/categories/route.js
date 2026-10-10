@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getAuthenticatedAdmin } from "@/lib/adminAuth";
 import dbConnect from "@/lib/dbConnect";
 import Category from "@/models/Category";
@@ -70,10 +71,13 @@ export async function GET(request) {
       categories.map(async (cat) => {
         const count = await Product.countDocuments({
           $or: [
+            { categories: cat._id },
             { category: cat.slug },
             { category: cat.name },
             { category: cat.slug?.toLowerCase() },
             { category: cat.name?.toLowerCase() },
+            { categoryId: cat._id },
+            { category: cat._id },
           ],
         });
         const catObj = typeof cat.toObject === "function" ? cat.toObject() : cat;
@@ -151,6 +155,18 @@ export async function POST(request) {
       isUnlisted: Boolean(isUnlisted),
     });
 
+    if (Array.isArray(body.productIds) && body.productIds.length > 0) {
+      await Product.updateMany(
+        { _id: { $in: body.productIds } },
+        { $addToSet: { categories: newCategory._id } }
+      );
+    }
+
+    try {
+      revalidateTag("categories");
+      revalidateTag("products");
+    } catch {}
+
     return NextResponse.json(
       {
         success: true,
@@ -213,12 +229,22 @@ export async function PUT(request) {
       runValidators: true,
     });
 
-    if (!updated) {
-      return NextResponse.json(
-        { success: false, message: "Category not found" },
-        { status: 404 }
+    // Bidirectional sync: assign products to this category
+    if (Array.isArray(body.productIds)) {
+      await Product.updateMany(
+        { _id: { $in: body.productIds } },
+        { $addToSet: { categories: targetId } }
+      );
+      await Product.updateMany(
+        { _id: { $nin: body.productIds }, categories: targetId },
+        { $pull: { categories: targetId } }
       );
     }
+
+    try {
+      revalidateTag("categories");
+      revalidateTag("products");
+    } catch {}
 
     return NextResponse.json({
       success: true,

@@ -15,7 +15,19 @@ export async function GET() {
   try {
     await dbConnect();
 
-    let config = await HomepageConfig.findOne().lean();
+    let config = await HomepageConfig.findOne()
+      .populate({
+        path: "heroSlider.slides.featuredProductId",
+        model: "Product",
+        select:
+          "title price originalPrice images image slug stock stock_quantity avgRating reviewCount category",
+      })
+      .populate({
+        path: "newArrivals.tabs.categoryId",
+        model: "Category",
+        select: "_id name slug isUnlisted",
+      })
+      .lean();
 
     if (!config) {
       // Auto-seed initial configuration if empty
@@ -163,6 +175,8 @@ export async function GET() {
           originalPrice: Number(prod.originalPrice) || 0,
           images: Array.isArray(prod.images) ? prod.images : [],
           image: (Array.isArray(prod.images) && prod.images[0]) || prod.image || "",
+          slug: prod.slug || "",
+          stock: prod.stock ?? prod.stock_quantity ?? 0,
           avgRating: realAvg,
           averageRating: realAvg,
           reviewCount: realCount,
@@ -216,10 +230,13 @@ export async function GET() {
       featuredCategories.map(async (cat) => {
         const count = await Product.countDocuments({
           $or: [
+            { categories: cat._id },
             { category: cat.slug },
             { category: cat.name },
-            { category: cat.slug?.toLowerCase() },
-            { category: cat.name?.toLowerCase() },
+            { category: new RegExp(`^${cat.slug}$`, "i") },
+            { category: new RegExp(`^${cat.name}$`, "i") },
+            { categoryId: cat._id },
+            { category: cat._id },
           ],
         });
         return {
@@ -336,14 +353,19 @@ export async function GET() {
     const populatedTabs = rawTabs.slice(0, 5).map((t) => {
       if (t.sourceType === "category" && t.categoryId) {
         const rawId = t.categoryId?._id ? t.categoryId._id.toString() : t.categoryId.toString();
-        const cat = catMap.get(rawId);
+        const cat = catMap.get(rawId) || (typeof t.categoryId === "object" ? t.categoryId : null);
         return {
           _id: t._id ? t._id.toString() : undefined,
           label: t.label,
           sourceType: "category",
           presetFilter: t.presetFilter || "all",
           categoryId: cat
-            ? { _id: cat._id.toString(), name: cat.name, slug: cat.slug }
+            ? {
+                _id: (cat._id || cat.id)?.toString(),
+                name: cat.name,
+                slug: cat.slug,
+                isUnlisted: cat.isUnlisted,
+              }
             : null,
         };
       }

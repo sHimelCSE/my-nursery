@@ -16,12 +16,15 @@ export async function GET(request) {
 
     const categoriesWithCounts = await Promise.all(
       categories.map(async (cat) => {
+        // Flexible matching to ensure no product is missed
         const count = await Product.countDocuments({
           $or: [
             { category: cat.slug },
             { category: cat.name },
-            { category: cat.slug?.toLowerCase() },
-            { category: cat.name?.toLowerCase() },
+            { category: new RegExp(`^${cat.slug}$`, "i") },
+            { category: new RegExp(`^${cat.name}$`, "i") },
+            { categoryId: cat._id },
+            { category: cat._id },
           ],
         });
         const catObj = typeof cat.toObject === "function" ? cat.toObject() : cat;

@@ -75,14 +75,16 @@ export default function Footer() {
     return null;
   }
 
-  const phone = siteSettings.general?.hotlinePhone || DEFAULT_SITE_SETTINGS.general.hotlinePhone;
-  const email = siteSettings.general?.contactEmail || DEFAULT_SITE_SETTINGS.general.contactEmail;
+  const phone = siteSettings.general?.hotlinePhone || "";
+  const email = siteSettings.general?.contactEmail || "";
+  const address = siteSettings.general?.storeAddress || "";
+  const hours = siteSettings.general?.businessHours || "";
   const social = [
-    { label: "Facebook", href: siteSettings.socialLinks?.facebook || DEFAULT_SITE_SETTINGS.socialLinks.facebook, Icon: FacebookIcon },
-    { label: "Twitter", href: siteSettings.socialLinks?.twitter || DEFAULT_SITE_SETTINGS.socialLinks.twitter, Icon: TwitterIcon },
-    { label: "Instagram", href: siteSettings.socialLinks?.instagram || DEFAULT_SITE_SETTINGS.socialLinks.instagram, Icon: InstagramIcon },
-    { label: "YouTube", href: siteSettings.socialLinks?.youtube || DEFAULT_SITE_SETTINGS.socialLinks.youtube, Icon: YoutubeIcon },
-  ];
+    { label: "Facebook", href: siteSettings.socialLinks?.facebook, Icon: FacebookIcon },
+    { label: "Twitter", href: siteSettings.socialLinks?.twitter, Icon: TwitterIcon },
+    { label: "Instagram", href: siteSettings.socialLinks?.instagram, Icon: InstagramIcon },
+    { label: "YouTube", href: siteSettings.socialLinks?.youtube, Icon: YoutubeIcon },
+  ].filter((s) => s.href && s.href.trim() !== "");
 
   // Group dynamic links by `footerColumn`
   const groupedColumns = footerLinks.reduce((acc, item) => {
@@ -116,25 +118,28 @@ export default function Footer() {
                 />
               </Link>
 
-              <p className="text-sm leading-relaxed max-w-sm">
-                {siteSettings.footer?.bioText ||
-                  "Premium botanical sanctuary providing healthy acclimatized house plants, organic potting mediums, and ceramic vessels crafted for enduring living spaces."}
-              </p>
+              {siteSettings.footer?.bioText && (
+                <p className="text-sm leading-relaxed max-w-sm">
+                  {siteSettings.footer.bioText}
+                </p>
+              )}
 
-              <div className="flex items-center gap-2.5">
-                {social.map(({ label, href, Icon }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={label}
-                    className="w-9 h-9 rounded-full bg-white border border-gray-200 text-[#5A6B5C] hover:text-white hover:bg-[#1E3F20] hover:border-[#1E3F20] flex items-center justify-center transition-colors"
-                  >
-                    <Icon className="w-4 h-4" />
-                  </a>
-                ))}
-              </div>
+              {social.length > 0 && (
+                <div className="flex items-center gap-2.5">
+                  {social.map(({ label, href, Icon }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={label}
+                      className="w-9 h-9 rounded-full bg-white border border-gray-200 text-[#5A6B5C] hover:text-white hover:bg-[#1E3F20] hover:border-[#1E3F20] flex items-center justify-center transition-colors"
+                    >
+                      <Icon className="w-4 h-4" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 2+: Dynamic Columns Grouped from MongoDB */}
@@ -159,31 +164,41 @@ export default function Footer() {
             ))}
 
             {/* Final Column: Contact Info */}
-            <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-2">
-              <h3 className="text-sm font-extrabold text-[#1C2B1E] mb-4">Contact</h3>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-[#1E3F20] shrink-0 mt-0.5" />
-                  <span>{siteSettings.general?.storeAddress || DEFAULT_SITE_SETTINGS.general.storeAddress}</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-[#1E3F20] shrink-0" />
-                  <a href={`tel:${phone.replace(/\s+/g, "")}`} className="hover:text-[#1E3F20] font-medium transition-colors">
-                    {phone}
-                  </a>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-[#1E3F20] shrink-0" />
-                  <a href={`mailto:${email}`} className="hover:text-[#1E3F20] transition-colors break-all">
-                    {email}
-                  </a>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-[#1E3F20] shrink-0" />
-                  <span>{siteSettings.general?.businessHours || DEFAULT_SITE_SETTINGS.general.businessHours}</span>
-                </li>
-              </ul>
-            </div>
+            {(address || phone || email || hours) ? (
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-2">
+                <h3 className="text-sm font-extrabold text-[#1C2B1E] mb-4">Contact</h3>
+                <ul className="space-y-3 text-sm">
+                  {address && (
+                    <li className="flex items-start gap-3">
+                      <MapPin className="w-4 h-4 text-[#1E3F20] shrink-0 mt-0.5" />
+                      <span>{address}</span>
+                    </li>
+                  )}
+                  {phone && (
+                    <li className="flex items-center gap-3">
+                      <Phone className="w-4 h-4 text-[#1E3F20] shrink-0" />
+                      <a href={`tel:${phone.replace(/\s+/g, "")}`} className="hover:text-[#1E3F20] font-medium transition-colors">
+                        {phone}
+                      </a>
+                    </li>
+                  )}
+                  {email && (
+                    <li className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-[#1E3F20] shrink-0" />
+                      <a href={`mailto:${email}`} className="hover:text-[#1E3F20] transition-colors break-all">
+                        {email}
+                      </a>
+                    </li>
+                  )}
+                  {hours && (
+                    <li className="flex items-center gap-3">
+                      <Clock className="w-4 h-4 text-[#1E3F20] shrink-0" />
+                      <span>{hours}</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

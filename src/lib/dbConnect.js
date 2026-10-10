@@ -49,6 +49,13 @@ async function dbConnect() {
 
   try {
     cached.conn = await cached.promise;
+    // Auto-migration check: ensure any existing products without a slug receive unique slugs
+    if (!global.__productSlugsEnsured) {
+      global.__productSlugsEnsured = true;
+      import("@/models/Product")
+        .then((mod) => mod.ensureProductSlugs?.())
+        .catch((err) => console.error("Slug migration error:", err));
+    }
   } catch (e) {
     cached.promise = null;
     throw e;

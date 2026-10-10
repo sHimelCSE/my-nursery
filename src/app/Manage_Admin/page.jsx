@@ -85,6 +85,7 @@ import {
   PawPrint,
   Heart,
   Award,
+  CheckCircle2,
 } from "lucide-react";
 
 // ── Chart Custom Tooltip ──────────────────────────────────────────────────
@@ -232,6 +233,7 @@ export default function AdminDashboardPage() {
   const [productForm, setProductForm] = useState({
     title: "",
     category: "plant",
+    categories: [],
     costPrice: "",
     price: "",
     stock_quantity: "",
@@ -244,6 +246,13 @@ export default function AdminDashboardPage() {
       { name: "Small Pot", price: "", originalPrice: "", stock: "10", sku: "" },
     ],
     tags: [],
+    hasCareGuide: true,
+    careGuide: {
+      lightLocation: "",
+      hydrationWatering: "",
+      safetyDifficulty: "",
+      horticulturistNote: "",
+    },
     showCareGuideBadges: true,
     careBadges: {
       sunlight: "Medium Indirect",
@@ -270,6 +279,7 @@ export default function AdminDashboardPage() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [savingCategory, setSavingCategory] = useState(false);
   const [uploadingCatImage, setUploadingCatImage] = useState(false);
+  const [catProductSearch, setCatProductSearch] = useState("");
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     slug: "",
@@ -278,6 +288,7 @@ export default function AdminDashboardPage() {
     showInNavbar: true,
     order: 0,
     isUnlisted: false,
+    productIds: [],
   });
 
   // Team & permissions state
@@ -701,9 +712,29 @@ export default function AdminDashboardPage() {
   const openProductModal = (prod = null) => {
     if (prod) {
       setEditingProduct(prod);
+
+      // Extract assigned category IDs
+      const assignedCatIds =
+        Array.isArray(prod.categories) && prod.categories.length > 0
+          ? prod.categories.map((c) => (c?._id ? c._id.toString() : c?.toString()))
+          : [];
+      if (assignedCatIds.length === 0 && prod.category) {
+        const matched = categories.find(
+          (c) =>
+            c.slug === prod.category ||
+            c.name?.toLowerCase() === prod.category?.toLowerCase() ||
+            c._id?.toString() === prod.category ||
+            c._id?.toString() === prod.categoryId
+        );
+        if (matched) {
+          assignedCatIds.push(matched._id.toString());
+        }
+      }
+
       setProductForm({
         title: prod.title || "",
         category: prod.category || "plant",
+        categories: assignedCatIds,
         costPrice: prod.costPrice !== undefined ? prod.costPrice.toString() : "0",
         price: prod.price?.toString() || "",
         stock_quantity: prod.stock_quantity?.toString() || "",
@@ -730,6 +761,13 @@ export default function AdminDashboardPage() {
                   sku: "",
                 },
               ],
+        hasCareGuide: prod.hasCareGuide !== false,
+        careGuide: {
+          lightLocation: prod.careGuide?.lightLocation || "",
+          hydrationWatering: prod.careGuide?.hydrationWatering || "",
+          safetyDifficulty: prod.careGuide?.safetyDifficulty || "",
+          horticulturistNote: prod.careGuide?.horticulturistNote || prod.care_instructions || "",
+        },
         showCareGuideBadges: prod.showCareGuideBadges !== false,
         careBadges: {
           sunlight: prod.careBadges?.sunlight || "Medium Indirect",
@@ -748,6 +786,7 @@ export default function AdminDashboardPage() {
       setProductForm({
         title: "",
         category: "plant",
+        categories: [],
         costPrice: "",
         price: "",
         stock_quantity: "",
@@ -760,6 +799,13 @@ export default function AdminDashboardPage() {
           { name: "Small Pot", price: "", originalPrice: "", stock: "10", sku: "" },
         ],
         tags: [],
+        hasCareGuide: true,
+        careGuide: {
+          lightLocation: "",
+          hydrationWatering: "",
+          safetyDifficulty: "",
+          horticulturistNote: "",
+        },
         showCareGuideBadges: true,
         careBadges: {
           sunlight: "Medium Indirect",
@@ -898,8 +944,22 @@ export default function AdminDashboardPage() {
 
   // ─── Category Management Handlers ──────────────────────────────────────────
   const openCategoryModal = (cat = null) => {
+    setCatProductSearch("");
     if (cat) {
       setEditingCategory(cat);
+      const catId = cat._id?.toString();
+      const preCheckedProductIds = (products || [])
+        .filter((p) => {
+          const inArray =
+            Array.isArray(p.categories) &&
+            p.categories.some((c) => (c?._id ? c._id.toString() : c?.toString()) === catId);
+          const bySlug = cat.slug && p.category?.toLowerCase() === cat.slug?.toLowerCase();
+          const byName = cat.name && p.category?.toLowerCase() === cat.name?.toLowerCase();
+          const byId = p.categoryId?.toString() === catId || p.category?.toString() === catId;
+          return inArray || bySlug || byName || byId;
+        })
+        .map((p) => p._id.toString());
+
       setCategoryForm({
         name: cat.name || "",
         slug: cat.slug || "",
@@ -908,6 +968,7 @@ export default function AdminDashboardPage() {
         showInNavbar: cat.showInNavbar !== false,
         order: cat.order ?? 0,
         isUnlisted: Boolean(cat.isUnlisted),
+        productIds: preCheckedProductIds,
       });
     } else {
       setEditingCategory(null);
@@ -919,6 +980,7 @@ export default function AdminDashboardPage() {
         showInNavbar: true,
         order: categories.length,
         isUnlisted: false,
+        productIds: [],
       });
     }
     setIsCategoryModalOpen(true);
@@ -977,10 +1039,12 @@ export default function AdminDashboardPage() {
     try {
       setSavingCategory(true);
       const isEdit = Boolean(editingCategory?._id);
-      const url = "/api/admin/categories";
+      const url = isEdit
+        ? `/api/admin/categories/${editingCategory._id}`
+        : "/api/admin/categories";
       const method = isEdit ? "PUT" : "POST";
       const payload = {
-        ...(isEdit && { _id: editingCategory._id }),
+        ...(isEdit && { _id: editingCategory._id, id: editingCategory._id }),
         name: categoryForm.name.trim(),
         slug: categoryForm.slug.trim(),
         description: categoryForm.description.trim(),
@@ -988,6 +1052,7 @@ export default function AdminDashboardPage() {
         showInNavbar: categoryForm.showInNavbar,
         order: Number(categoryForm.order) || 0,
         isUnlisted: Boolean(categoryForm.isUnlisted),
+        productIds: categoryForm.productIds || [],
       };
 
       const res = await fetch(url, {
@@ -1002,10 +1067,11 @@ export default function AdminDashboardPage() {
       }
 
       message.success(
-        isEdit ? "Category updated successfully!" : "Category created successfully!"
+        isEdit ? "Category updated and products synced!" : "Category created successfully!"
       );
       setIsCategoryModalOpen(false);
       fetchCategories();
+      fetchProducts();
     } catch (err) {
       message.error(err.message || "Could not save category.");
     } finally {
@@ -1087,9 +1153,22 @@ export default function AdminDashboardPage() {
             }))
         : [];
 
+      // Resolve primary category slug for backward compatibility
+      let primaryCategorySlug = productForm.category || "plant";
+      const selectedCatIds = Array.isArray(productForm.categories) ? productForm.categories : [];
+      if (selectedCatIds.length > 0) {
+        const firstCat = categories.find(
+          (c) => (c._id?.toString() || c.id?.toString()) === selectedCatIds[0] || c.slug === selectedCatIds[0]
+        );
+        if (firstCat) {
+          primaryCategorySlug = firstCat.slug || firstCat.name?.toLowerCase().replace(/\s+/g, "-") || primaryCategorySlug;
+        }
+      }
+
       const payload = {
         title: productForm.title.trim(),
-        category: productForm.category,
+        category: primaryCategorySlug,
+        categories: selectedCatIds,
         costPrice: Number(productForm.costPrice) || 0,
         price: Number(productForm.price),
         stock_quantity: Number(productForm.stock_quantity) || 0,
@@ -1099,6 +1178,13 @@ export default function AdminDashboardPage() {
         hasVariants: Boolean(productForm.hasVariants),
         variantGroupTitle: (productForm.variantGroupTitle || "Select Option").trim(),
         variants: cleanedVariants,
+        hasCareGuide: Boolean(productForm.hasCareGuide !== false),
+        careGuide: {
+          lightLocation: (productForm.careGuide?.lightLocation || "").trim(),
+          hydrationWatering: (productForm.careGuide?.hydrationWatering || "").trim(),
+          safetyDifficulty: (productForm.careGuide?.safetyDifficulty || "").trim(),
+          horticulturistNote: (productForm.careGuide?.horticulturistNote || productForm.care_instructions || "").trim(),
+        },
         showCareGuideBadges: Boolean(productForm.showCareGuideBadges),
         careBadges: {
           sunlight: productForm.careBadges?.sunlight || "Medium Indirect",
@@ -1134,6 +1220,7 @@ export default function AdminDashboardPage() {
       );
       setIsProductModalOpen(false);
       fetchProducts();
+      fetchCategories();
       fetchOverview();
     } catch (err) {
       message.error(err.message || "Could not save product.");
@@ -3544,30 +3631,99 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Category, Cost Price, Selling Price, Stock */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Category *</label>
-              <select
-                value={productForm.category}
-                onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
-              >
-                {categories.length > 0 ? (
-                  categories.map((c) => (
-                    <option key={c._id || c.slug} value={c.slug || c.name}>
-                      {c.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="plant">Living Plants</option>
-                    <option value="fertilizer">Organic Fertilizers</option>
-                    <option value="tool">Tools &amp; Pots</option>
-                  </>
-                )}
-              </select>
+          {/* Modern Multi-Collection Selector */}
+          <div className="p-3.5 rounded-2xl bg-[#F4F7F2] border border-[#E2E8DC] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-[#1A2E22]">
+                Assigned Collections / Categories (কালেকশন নির্বাচন করুন) *
+              </label>
+              <span className="text-[11px] font-semibold text-[#2D6A4F] bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-xs">
+                {(productForm.categories || []).length} selected
+              </span>
             </div>
+
+            {/* Selected Collections Badges (soft green removable badges) */}
+            {(productForm.categories || []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pb-0.5">
+                {(productForm.categories || []).map((catId) => {
+                  const cat = categories.find(
+                    (c) =>
+                      (c._id?.toString() || c.id?.toString()) === catId ||
+                      c.slug === catId
+                  );
+                  return (
+                    <span
+                      key={catId}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-[#2D6A4F]/25 text-[#1E3F20] text-xs font-semibold shadow-xs"
+                    >
+                      <span>{cat?.name || catId}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = (productForm.categories || []).filter(
+                            (id) => id !== catId
+                          );
+                          setProductForm({ ...productForm, categories: next });
+                        }}
+                        className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Remove collection"
+                      >
+                        <CloseIcon className="w-3 h-3 ml-1" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Collections Pill / Checkbox selector */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {categories.map((c) => {
+                const catId = c._id?.toString() || c.id?.toString() || c.slug;
+                const isSelected = (productForm.categories || []).includes(catId);
+                return (
+                  <button
+                    key={catId}
+                    type="button"
+                    onClick={() => {
+                      const current = productForm.categories || [];
+                      const next = isSelected
+                        ? current.filter((id) => id !== catId)
+                        : [...current, catId];
+                      setProductForm({
+                        ...productForm,
+                        categories: next,
+                        category:
+                          next.length > 0
+                            ? c.slug ||
+                              c.name?.toLowerCase().replace(/\s+/g, "-") ||
+                              "plant"
+                            : productForm.category,
+                      });
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-[#2D6A4F] text-white font-bold shadow-xs"
+                        : "bg-white border border-gray-200 text-gray-700 hover:border-[#2D6A4F]/50 hover:bg-emerald-50/20 font-medium"
+                    }`}
+                  >
+                    {isSelected ? (
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                    ) : (
+                      <span className="w-3.5 h-3.5 rounded border border-gray-300 shrink-0 inline-block" />
+                    )}
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+              {categories.length === 0 && (
+                <p className="text-xs text-gray-400">No categories found.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Pricing & Stock */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
                 Buying Cost (৳)
@@ -3577,7 +3733,9 @@ export default function AdminDashboardPage() {
                 min={0}
                 placeholder="200"
                 value={productForm.costPrice}
-                onChange={(e) => setProductForm({ ...productForm, costPrice: e.target.value })}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, costPrice: e.target.value })
+                }
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
               />
             </div>
@@ -3591,7 +3749,9 @@ export default function AdminDashboardPage() {
                 min={0}
                 placeholder="450"
                 value={productForm.price}
-                onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, price: e.target.value })
+                }
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#40916C]/40"
               />
             </div>
@@ -3973,99 +4133,174 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          {/* ════ SECTION C: CARE GUIDE & BADGES SETTINGS ════ */}
-          <div className="p-4 rounded-2xl bg-[#F7F9F6] border border-[#E2EBE1] space-y-3">
+          {/* ════ SECTION C: BOTANICAL CARE GUIDE TAB SETTINGS ════ */}
+          <div className="p-4 rounded-2xl bg-[#F7FAF6] border border-[#DDE8D9] space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5 cursor-pointer">
                   <Sprout className="w-4 h-4 text-[#2D6A4F]" />
-                  <span>Section C: Plant Care Badges Settings</span>
+                  <span>Botanical Care Guide Tab Settings</span>
                 </label>
                 <p className="text-[11px] text-gray-500">
-                  Toggle off for fertilizers, soils, planters, and gardening tools.
+                  Enable Care Guide Tab for this product (Admins can toggle OFF for fertilizers, soils, and pots).
                 </p>
               </div>
               <Switch
-                checked={productForm.showCareGuideBadges}
+                checked={productForm.hasCareGuide !== false}
                 onChange={(checked) =>
-                  setProductForm((prev) => ({ ...prev, showCareGuideBadges: checked }))
+                  setProductForm((prev) => ({ ...prev, hasCareGuide: checked }))
                 }
               />
             </div>
 
-            {productForm.showCareGuideBadges && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-[#E2EBE1]">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <Sun className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Sunlight</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Medium Indirect"
-                    value={productForm.careBadges?.sunlight}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        careBadges: { ...productForm.careBadges, sunlight: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
-                  />
+            {productForm.hasCareGuide !== false && (
+              <div className="space-y-3.5 pt-3 border-t border-[#E2EBE1]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span>1. Light &amp; Location</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Position in bright indirect sunlight. Avoid midday western sun."
+                      value={productForm.careGuide?.lightLocation || ""}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          careGuide: { ...(prev.careGuide || {}), lightLocation: e.target.value },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F] resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                      <Droplets className="w-3.5 h-3.5 text-sky-500" />
+                      <span>2. Hydration &amp; Watering</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Water thoroughly once top 1-2 inches of soil feel dry."
+                      value={productForm.careGuide?.hydrationWatering || ""}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          careGuide: { ...(prev.careGuide || {}), hydrationWatering: e.target.value },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F] resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>3. Safety, Nutrition &amp; Difficulty</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Non-toxic to pets. Apply vermicompost monthly."
+                      value={productForm.careGuide?.safetyDifficulty || ""}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          careGuide: { ...(prev.careGuide || {}), safetyDifficulty: e.target.value },
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F] resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>4. Specific Horticulturist Note</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Fill with well-draining mix..."
+                      value={productForm.careGuide?.horticulturistNote || ""}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          careGuide: { ...(prev.careGuide || {}), horticulturistNote: e.target.value },
+                          care_instructions: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F] resize-none"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <Droplets className="w-3.5 h-3.5 text-sky-500" />
-                    <span>Water</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Once a week"
-                    value={productForm.careBadges?.water}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        careBadges: { ...productForm.careBadges, water: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <PawPrint className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Pet Safety</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Non-Toxic"
-                    value={productForm.careBadges?.petSafe}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        careBadges: { ...productForm.careBadges, petSafe: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <Award className="w-3.5 h-3.5 text-green-600" />
-                    <span>Difficulty</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Beginner"
-                    value={productForm.careBadges?.difficulty}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        careBadges: { ...productForm.careBadges, difficulty: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-[#1A2E22] bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
-                  />
+
+                {/* Quick Badges Row */}
+                <div className="pt-2 border-t border-[#E2EBE1]">
+                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Quick Care Badges
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-600 mb-0.5">Sunlight</label>
+                      <input
+                        type="text"
+                        placeholder="Medium Indirect"
+                        value={productForm.careBadges?.sunlight}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            careBadges: { ...productForm.careBadges, sunlight: e.target.value },
+                          })
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-600 mb-0.5">Water</label>
+                      <input
+                        type="text"
+                        placeholder="Once a week"
+                        value={productForm.careBadges?.water}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            careBadges: { ...productForm.careBadges, water: e.target.value },
+                          })
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-600 mb-0.5">Pet Safety</label>
+                      <input
+                        type="text"
+                        placeholder="Non-Toxic"
+                        value={productForm.careBadges?.petSafe}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            careBadges: { ...productForm.careBadges, petSafe: e.target.value },
+                          })
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-600 mb-0.5">Difficulty</label>
+                      <input
+                        type="text"
+                        placeholder="Beginner"
+                        value={productForm.careBadges?.difficulty}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            careBadges: { ...productForm.careBadges, difficulty: e.target.value },
+                          })
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D6A4F]"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -4211,7 +4446,7 @@ export default function AdminDashboardPage() {
         open={isCategoryModalOpen}
         onCancel={() => setIsCategoryModalOpen(false)}
         footer={null}
-        width={540}
+        width={620}
       >
         <form onSubmit={handleSaveCategory} className="space-y-4 pt-3">
           {/* Name & Auto-slug */}
@@ -4357,6 +4592,96 @@ export default function AdminDashboardPage() {
                 setCategoryForm((prev) => ({ ...prev, isUnlisted: checked }))
               }
             />
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════
+              ASSIGN PRODUCTS TO THIS COLLECTION (এই কালেকশনের প্রোডাক্টসমূহ)
+          ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="pt-2 p-3.5 bg-[#F4F7F2] border border-[#E2E8DC] rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-[#1A2E22]">
+                  Assign Products to this Collection (এই কালেকশনের প্রোডাক্টসমূহ)
+                </label>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Select products that belong to this nursery collection.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-[#2D6A4F] bg-white px-2.5 py-1 rounded-full border border-emerald-200 shadow-xs">
+                {(categoryForm.productIds || []).length} assigned
+              </span>
+            </div>
+
+            {/* Product search bar */}
+            <div className="relative">
+              <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search products by title..."
+                value={catProductSearch}
+                onChange={(e) => setCatProductSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-[#1A2E22] focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
+              />
+            </div>
+
+            {/* Scrollable list of all store products */}
+            <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+              {products
+                .filter((p) =>
+                  !catProductSearch.trim() ||
+                  p.title?.toLowerCase().includes(catProductSearch.toLowerCase().trim())
+                )
+                .map((p) => {
+                  const pId = p._id.toString();
+                  const isChecked = (categoryForm.productIds || []).includes(pId);
+                  const pImage =
+                    (Array.isArray(p.images) && p.images[0]) ||
+                    p.image ||
+                    "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80";
+
+                  return (
+                    <label
+                      key={pId}
+                      className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${
+                        isChecked
+                          ? "bg-white border-[#2D6A4F] shadow-xs"
+                          : "bg-white/70 border-gray-100 hover:border-gray-200 hover:bg-white"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = categoryForm.productIds || [];
+                          const next = e.target.checked
+                            ? [...current, pId]
+                            : current.filter((id) => id !== pId);
+                          setCategoryForm((prev) => ({ ...prev, productIds: next }));
+                        }}
+                        className="w-4 h-4 rounded text-[#2D6A4F] focus:ring-[#2D6A4F] cursor-pointer accent-[#2D6A4F]"
+                      />
+                      <img
+                        src={pImage}
+                        alt={p.title}
+                        className="w-9 h-9 rounded-lg object-cover shrink-0 border border-gray-100"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#1A2E22] truncate">
+                          {p.title}
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          ৳{p.price} · Stock: {p.stock_quantity ?? p.stock ?? 0}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              {products.length === 0 && (
+                <p className="text-center py-4 text-xs text-gray-400">
+                  No products available in nursery.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Form Actions */}

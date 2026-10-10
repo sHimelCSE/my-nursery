@@ -4,15 +4,32 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import DynamicGridSection from "@/components/DynamicGridSection";
-import HeroSection from "@/components/HeroSection";
+import dynamic from "next/dynamic";
 import HeroSlider from "@/components/HeroSlider";
 import BotanicalCategorySection from "@/components/BotanicalCategorySection";
-import BotanicalDealsSection from "@/components/BotanicalDealsSection";
-import TopRankingsSection from "@/components/TopRankingsSection";
-import BlogSection from "@/components/BlogSection";
-import GuaranteeStripSection from "@/components/GuaranteeStripSection";
+
+const BotanicalDealsSection = dynamic(() => import("@/components/BotanicalDealsSection"), {
+  loading: () => <div className="min-h-[300px] max-w-7xl mx-auto px-4 py-8" />,
+});
+
+const TopRankingsSection = dynamic(() => import("@/components/TopRankingsSection"), {
+  loading: () => <div className="min-h-[200px] max-w-7xl mx-auto px-4 py-8" />,
+});
+
+const BlogSection = dynamic(() => import("@/components/BlogSection"), {
+  loading: () => <div className="min-h-[300px] max-w-7xl mx-auto px-4 py-8" />,
+});
+
+const DynamicGridSection = dynamic(() => import("@/components/DynamicGridSection"), {
+  loading: () => <div className="min-h-[200px] max-w-7xl mx-auto px-4 py-8" />,
+});
+
+const GuaranteeStripSection = dynamic(() => import("@/components/GuaranteeStripSection"), {
+  loading: () => <div className="min-h-[80px] max-w-7xl mx-auto px-4 py-4" />,
+});
+
 import { DEFAULT_HOMEPAGE_CONFIG } from "@/constants/defaultHomepageConfig";
+
 import ProductCard from "@/components/ProductCard";
 import SafeImage from "@/components/SafeImage";
 import {
@@ -54,13 +71,6 @@ const getFallbackFor = (product: any) => {
 // Deterministic discount values (no randomness => no hydration mismatch)
 const DISCOUNTS = [15, 10, 15, 10, 15, 10];
 
-const DEAL_PLACEHOLDERS = [
-  { _id: "deal-1", title: "Monstera Deliciosa", price: 850, image: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600&q=80" },
-  { _id: "deal-2", title: "Rose Queen", price: 450, image: "https://images.unsplash.com/photo-1502977249166-824b3a8a4d6d?w=600&q=80" },
-  { _id: "deal-3", title: "Peace Lily", price: 380, image: "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=600&q=80" },
-  { _id: "deal-4", title: "Snake Plant", price: 320, image: SNAKE_PLANT_FALLBACK },
-];
-
 const TABS = [
   { id: "all", label: "All Plants" },
   { id: "new", label: "New Arrivals" },
@@ -101,7 +111,19 @@ const BLOG_POSTS = [
   },
 ];
 
-export default function HomeClient() {
+export interface HomeClientProps {
+  initialProducts?: any[];
+  initialCategories?: any[];
+  initialConfig?: any;
+  initialBlogs?: any[];
+}
+
+export default function HomeClient({
+  initialProducts = [],
+  initialCategories = [],
+  initialConfig = null,
+  initialBlogs = [],
+}: HomeClientProps = {}) {
   const { message } = App.useApp();
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
@@ -113,11 +135,14 @@ export default function HomeClient() {
   const urlSearch = searchParams ? searchParams.get("search") : null;
 
   const [mounted, setMounted] = useState(false);
-  const [homepageConfig, setHomepageConfig] = useState<any>(DEFAULT_HOMEPAGE_CONFIG);
-  const [products, setProducts] = useState<any[]>([]);
-  const [sections, setSections] = useState<any[]>([]);
+  const [homepageConfig, setHomepageConfig] = useState<any>(
+    initialConfig || DEFAULT_HOMEPAGE_CONFIG
+  );
+  const [products, setProducts] = useState<any[]>(initialProducts);
+  const [categories, setCategories] = useState<any[]>(initialCategories);
+  const [latestBlogs, setLatestBlogs] = useState<any[]>(initialBlogs);
   const [customSections, setCustomSections] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeTabIndex, setActiveTabIndex] = useState<number>(0);
   const [query, setQuery] = useState("");
@@ -129,7 +154,7 @@ export default function HomeClient() {
     setMounted(true);
   }, []);
 
-  // Fetch dynamic homepage config
+  // Fetch dynamic homepage config if not pre-provided, or re-fetch on theme builder updates
   const fetchHomepageConfig = useCallback(() => {
     fetch("/api/homepage-config")
       .then((res) => res.json())
@@ -142,11 +167,13 @@ export default function HomeClient() {
   }, []);
 
   useEffect(() => {
-    fetchHomepageConfig();
+    if (!initialConfig) {
+      fetchHomepageConfig();
+    }
     const handleUpdate = () => fetchHomepageConfig();
     window.addEventListener("homepageSectionsUpdated", handleUpdate);
     return () => window.removeEventListener("homepageSectionsUpdated", handleUpdate);
-  }, [fetchHomepageConfig]);
+  }, [fetchHomepageConfig, initialConfig]);
 
   // Sync category & search from URL query parameters
   useEffect(() => {
@@ -161,34 +188,6 @@ export default function HomeClient() {
       if (el) el.scrollIntoView({ behavior: "smooth" });
     }
   }, [urlCategory, urlSearch]);
-
-  const fetchSections = useCallback(() => {
-    fetch("/api/admin/sections")
-      .then((res) => res.json())
-      .then((data) => {
-        const list = data.sections || data.data;
-        if (data.success && Array.isArray(list)) {
-          setSections(list);
-          setCustomSections(
-            list.filter(
-              (s: any) =>
-                s.sectionType === "custom_grid" &&
-                s.enabled !== false &&
-                s.isActive !== false
-            )
-          );
-        }
-      })
-      .catch(() => { });
-  }, []);
-
-  // Fetch custom page sections (Page Builder)
-  useEffect(() => {
-    fetchSections();
-    const handleUpdate = () => fetchSections();
-    window.addEventListener("homepageSectionsUpdated", handleUpdate);
-    return () => window.removeEventListener("homepageSectionsUpdated", handleUpdate);
-  }, [fetchSections]);
 
   // ─── Real-Time Countdown Timer ──────────────────────────────────────────────
   // Initial state is static so server and client markup always match.
@@ -247,14 +246,18 @@ export default function HomeClient() {
     }
   }, [activeCategory, query]);
 
-  const [latestBlogs, setLatestBlogs] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-
+  // Only re-fetch products when user interacts (changes category or search)
   useEffect(() => {
+    if (activeCategory === "all" && !query.trim() && initialProducts.length > 0) {
+      setProducts(initialProducts);
+      return;
+    }
     fetchProducts();
-  }, [fetchProducts]);
+  }, [activeCategory, query, fetchProducts, initialProducts]);
 
+  // Fetch categories client-side only if not passed from server
   useEffect(() => {
+    if (initialCategories.length > 0) return;
     fetch("/api/categories")
       .then((res) => res.json())
       .then((data) => {
@@ -263,9 +266,11 @@ export default function HomeClient() {
         }
       })
       .catch((err) => console.error("Error fetching homepage categories:", err));
-  }, []);
+  }, [initialCategories]);
 
+  // Fetch blogs client-side only if not passed from server
   useEffect(() => {
+    if (initialBlogs.length > 0) return;
     fetch("/api/blogs?limit=3")
       .then((res) => res.json())
       .then((data) => {
@@ -274,7 +279,7 @@ export default function HomeClient() {
         }
       })
       .catch((err) => console.error("Error fetching homepage blogs:", err));
-  }, []);
+  }, [initialBlogs]);
 
   const handleAddToCart = (product: any, e?: React.MouseEvent) => {
     if (e) {
@@ -343,8 +348,6 @@ export default function HomeClient() {
   };
 
   // ─── Derived datasets ───────────────────────────────────────────────────────
-  const dealsProducts = products.length > 0 ? products.slice(0, 4) : DEAL_PLACEHOLDERS;
-
   const arrivalTabs = useMemo(() => {
     if (
       Array.isArray(homepageConfig?.newArrivals?.tabs) &&
@@ -364,32 +367,72 @@ export default function HomeClient() {
 
     if (currentTab?.sourceType === "category") {
       const cat = currentTab.categoryId;
-      const catId = typeof cat === "object" && cat ? (cat._id || cat.id) : cat;
-      const catSlug = typeof cat === "object" && cat ? (cat.slug || "") : "";
-      const catName = typeof cat === "object" && cat ? (cat.name || "") : "";
+      const catId = typeof cat === "object" && cat ? (cat._id || cat.id)?.toString() : (cat ? cat.toString() : "");
+      let catSlug = typeof cat === "object" && cat ? (cat.slug || "") : "";
+      let catName = typeof cat === "object" && cat ? (cat.name || "") : "";
+
+      // Fallback: If slug or name is missing, look it up in categories list
+      if ((!catSlug || !catName) && catId) {
+        const found = (categories || []).find((c: any) => String(c?._id || c?.id) === String(catId));
+        if (found) {
+          if (!catSlug) catSlug = found.slug || "";
+          if (!catName) catName = found.name || "";
+        }
+      }
+
+      // If still missing, check tab label against categories
+      if ((!catSlug || !catName) && currentTab.label) {
+        const found = (categories || []).find((c: any) =>
+          c?.name?.toLowerCase() === currentTab.label.toLowerCase() ||
+          c?.slug?.toLowerCase() === currentTab.label.toLowerCase()
+        );
+        if (found) {
+          if (!catSlug) catSlug = found.slug || "";
+          if (!catName) catName = found.name || "";
+        }
+      }
+
+      const normSlug = catSlug.toLowerCase().trim();
+      const normSlugSpaces = normSlug.replace(/-/g, " ");
+      const normName = catName.toLowerCase().trim();
 
       list = list.filter((p) => {
         if (!p) return false;
-        const pCategory = (p.category || "").toString().toLowerCase().trim();
+
+        // 1. Check p.categories array (multi-collection ObjectIds or populated objects)
+        if (Array.isArray(p.categories)) {
+          const hasMatch = p.categories.some((c: any) => {
+            const cid = typeof c === "object" && c ? (c._id || c.id)?.toString() : c?.toString();
+            if (catId && cid && String(cid) === String(catId)) return true;
+            if (normSlug && typeof c === "object" && c?.slug && c.slug.toLowerCase().trim() === normSlug) return true;
+            if (normName && typeof c === "object" && c?.name && c.name.toLowerCase().trim() === normName) return true;
+            return false;
+          });
+          if (hasMatch) return true;
+        }
+
+        // 2. Check p.categoryId
         const pCatId = p.categoryId
           ? typeof p.categoryId === "object"
-            ? p.categoryId._id || p.categoryId.id
-            : p.categoryId
+            ? (p.categoryId._id || p.categoryId.id)?.toString()
+            : p.categoryId?.toString()
           : null;
-
-        // Match category ID if present
         if (catId && pCatId && String(pCatId) === String(catId)) return true;
 
-        // Match category slug or name
-        if (catSlug && pCategory === catSlug.toLowerCase().trim()) return true;
-        if (catName && pCategory === catName.toLowerCase().trim()) return true;
+        // 3. Check p.category as an ID string
+        const pCategoryRaw = (p.category || "").toString().trim();
+        if (catId && pCategoryRaw === String(catId)) return true;
 
-        if (
-          p.categorySlug &&
-          catSlug &&
-          p.categorySlug.toLowerCase().trim() === catSlug.toLowerCase().trim()
-        )
-          return true;
+        // 4. Check p.category as slug or name
+        const pCategory = pCategoryRaw.toLowerCase();
+        if (normSlug && (pCategory === normSlug || pCategory === normSlugSpaces)) return true;
+        if (normName && pCategory === normName) return true;
+
+        // 5. Check p.categorySlug
+        if (p.categorySlug) {
+          const pCatSlug = p.categorySlug.toString().toLowerCase().trim();
+          if (normSlug && (pCatSlug === normSlug || pCatSlug === normSlugSpaces)) return true;
+        }
 
         return false;
       });
@@ -416,7 +459,7 @@ export default function HomeClient() {
     }
 
     return showSpotlightBanner ? list.slice(0, 6) : list.slice(0, 8);
-  }, [products, currentTab, showSpotlightBanner]);
+  }, [products, currentTab, showSpotlightBanner, categories]);
 
   const scrollToProducts = (slug: string) => {
     setActiveCategory(slug);
@@ -424,26 +467,19 @@ export default function HomeClient() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  const sectionHidden = (type: string) => {
-    const sec = sections.find((s) => s.sectionType === type);
-    return !!sec && (sec.isActive === false || sec.enabled === false);
-  };
-  const heroSec = sections.find((s) => s.sectionType === "hero");
-  const catSec = sections.find((s) => s.sectionType === "categories");
-
   return (
     <div className="bg-[#F7F8F4] min-h-screen text-[#1C2B1E]">
       {/* ─── 1. Hero Slider ───────────────────────────────────────────────── */}
-      {homepageConfig?.heroSlider?.isEnabled !== false && !sectionHidden("hero") && (
-        <HeroSlider data={homepageConfig?.heroSlider} section={heroSec} />
+      {homepageConfig?.heroSlider?.isEnabled !== false && (
+        <HeroSlider section={null} data={homepageConfig?.heroSlider} />
       )}
 
       {/* ─── 2. Shop by Category + Perks ───────────────────────────────────── */}
-      {homepageConfig?.categoriesSection?.isEnabled !== false && !sectionHidden("categories") && (
+      {homepageConfig?.categoriesSection?.isEnabled !== false && (
         <BotanicalCategorySection
+          section={null}
           data={homepageConfig?.categoriesSection}
           categories={categories}
-          section={catSec}
           onSelectCategory={scrollToProducts}
         />
       )}
@@ -456,8 +492,8 @@ export default function HomeClient() {
           onOpenQuickView={(product: any) =>
             setQuickViewProduct({
               ...product,
-              description: product.description || "Botanical specimen",
-              stock_quantity: product.stock_quantity ?? product.stock ?? 10,
+              description: product.description || product.shortDescription || "",
+              stock_quantity: product.stock_quantity ?? product.stock ?? 0,
             })
           }
         />
@@ -733,9 +769,16 @@ export default function HomeClient() {
         <TopRankingsSection data={homepageConfig?.topRankings} onSelectCategory={scrollToProducts} />
       )}
 
-      {/* ─── 8. Latest Plant Care Guides & Blog ────────────────────────────── */}
       {homepageConfig?.blogSection?.isEnabled !== false && (
-        <BlogSection data={homepageConfig?.blogSection} />
+        <BlogSection
+          data={{
+            ...homepageConfig?.blogSection,
+            blogs:
+              latestBlogs && latestBlogs.length > 0
+                ? latestBlogs
+                : homepageConfig?.blogSection?.blogs,
+          }}
+        />
       )}
 
       {/* ─── 8. Newsletter Section ─────────────────────────────────────────── */}
@@ -855,9 +898,11 @@ export default function HomeClient() {
 
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#1E3F20] bg-[#EBF0E6] px-3 py-1 rounded-full">
-                      {quickViewProduct.category || "Botanical"}
-                    </span>
+                    {quickViewProduct.category && (
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#1E3F20] bg-[#EBF0E6] px-3 py-1 rounded-full">
+                        {quickViewProduct.category}
+                      </span>
+                    )}
                     {(quickViewProduct.stock_quantity ?? 1) <= 0 && (
                       <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full">
                         Out of Stock
@@ -870,13 +915,22 @@ export default function HomeClient() {
                       <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <p className="text-2xl font-bold text-[#1E3F20]">
-                    ৳{Number(quickViewProduct.price || 0).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-[#5A6B5C] leading-relaxed">
-                    {quickViewProduct.description ||
-                      "Nursery cultivated specimen acclimated for healthy root development."}
-                  </p>
+                  <div className="flex items-baseline gap-2.5">
+                    <p className="text-2xl font-bold text-[#1E3F20]">
+                      ৳{Number(quickViewProduct.price || 0).toLocaleString()}
+                    </p>
+                    {quickViewProduct.originalPrice &&
+                      Number(quickViewProduct.originalPrice) > Number(quickViewProduct.price) && (
+                        <span className="text-base text-gray-400 line-through">
+                          ৳{Number(quickViewProduct.originalPrice).toLocaleString()}
+                        </span>
+                      )}
+                  </div>
+                  {(quickViewProduct.shortDescription || quickViewProduct.description) && (
+                    <p className="text-sm text-[#5A6B5C] leading-relaxed">
+                      {quickViewProduct.shortDescription || quickViewProduct.description}
+                    </p>
+                  )}
 
                   {quickViewProduct.care_instructions && (
                     <div className="bg-[#F2F5ED] p-3.5 rounded-2xl text-xs text-[#1E3F20] space-y-1">
@@ -909,9 +963,9 @@ export default function HomeClient() {
                         </button>
                       );
                     })()}
-                    {quickViewProduct._id && !String(quickViewProduct._id).startsWith("deal-") && (
+                    {quickViewProduct.slug && (
                       <Link
-                        href={`/products/${quickViewProduct._id}`}
+                        href={`/products/${quickViewProduct.slug}`}
                         className="px-6 py-3 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 text-sm font-medium flex items-center justify-center transition-colors"
                       >
                         Details
